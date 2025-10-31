@@ -1,0 +1,5 @@
+id,name,language,voice,avatar,script,variables
+001,Tariq,English,Rachel,SantaFe_v2,,"{""product"":""OnboardIQ"",""role"":""Sales Manager""}"
+002,Mei,Chinese,Mei_CN,SantaFe_v2,,"{""product"":""OnboardIQ"",""role"":""Engineer""}"
+003,Arun,Hindi,Arun_IN,SantaFe_v2,,"{""product"":""OnboardIQ"",""role"":""Product Manager""}"
+004,Sofia,Spanish,Sofia_ES,SantaFe_v2,"Hola {{name}}, bienvenido a {{product}}!","{""product"":""AMP Video""}"

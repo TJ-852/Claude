@@ -1,0 +1,3 @@
+id,name,language,voice,avatar,script,variables
+test_001,Alice,English,Rachel,SantaFe_v2,"Hello Alice, welcome!","{""product"":""TestProduct""}"
+test_002,Bob,English,Rachel,SantaFe_v2,,"{""product"":""TestProduct"",""role"":""Tester""}"
