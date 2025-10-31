@@ -271,6 +271,75 @@ def export(
 
 
 @app.command()
+def translate(
+    video_path: str = typer.Argument(..., help="Path to video file to translate"),
+    target_language: str = typer.Argument(..., help="Target language (e.g., 'Thai', 'Spanish')"),
+    style: str = typer.Option("conversational", "--style", "-s", help="Translation style (casual, conversational, business, explainer, formal, technical)"),
+    avatar: str = typer.Option(None, "--avatar", "-a", help="Avatar ID (uses default if not specified)"),
+    voice: str = typer.Option(None, "--voice", help="Voice ID (uses default if not specified)"),
+    output: str = typer.Option(None, "--output", "-o", help="Output directory (auto-generated if not specified)"),
+    no_detect: bool = typer.Option(False, "--no-detect", help="Skip automatic language detection"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging")
+):
+    """
+    Translate a video to a new language with AI avatar.
+
+    Pipeline: Extract audio → Transcribe → Translate with style → Generate TTS → Create avatar video
+
+    Examples:
+        amp-video translate input.mp4 Thai --style conversational
+        amp-video translate video.mp4 Spanish --style business --avatar SantaFe_v2
+    """
+    log_level = "DEBUG" if verbose else "INFO"
+    setup_logging(log_level)
+
+    from .translate import translate_video, TranslationStyle
+    from .translate.styles import get_available_styles
+
+    # Validate style
+    available_styles = get_available_styles()
+    if style not in available_styles:
+        console.print(f"[red]Error: Invalid style '{style}'[/red]")
+        console.print(f"Available styles: {', '.join(available_styles)}")
+        raise typer.Exit(1)
+
+    translation_style = TranslationStyle(style)
+    video_file = Path(video_path)
+    output_dir = Path(output) if output else None
+
+    if not video_file.exists():
+        console.print(f"[red]Error: Video file not found: {video_file}[/red]")
+        raise typer.Exit(1)
+
+    try:
+        result = asyncio.run(
+            translate_video(
+                video_path=video_file,
+                target_language=target_language,
+                style=translation_style,
+                avatar=avatar,
+                voice=voice,
+                output_dir=output_dir,
+                detect_language=not no_detect
+            )
+        )
+
+        if result.error:
+            console.print(f"[red]Translation failed: {result.error}[/red]")
+            raise typer.Exit(1)
+
+        console.print(f"[green]✓ Translation complete![/green]")
+        console.print(f"Video: {result.video_path}")
+
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Interrupted by user[/yellow]\n")
+        raise typer.Exit(130)
+    except Exception as e:
+        console.print(f"\n[red]Error: {e}[/red]\n")
+        raise typer.Exit(1)
+
+
+@app.command()
 def version():
     """Show version information."""
     from . import __version__

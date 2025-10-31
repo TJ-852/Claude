@@ -1,17 +1,29 @@
 # AMP Video Automation Toolkit
 
-A production-ready Python toolkit for batch-generating personalized AI avatar videos with text-to-speech across multiple languages.
+A production-ready Python toolkit for batch-generating personalized AI avatar videos with text-to-speech across multiple languages, plus intelligent video translation with style adaptation.
 
 ## What It Does
 
-AMP Video Automation Toolkit orchestrates the full pipeline:
+AMP Video Automation Toolkit provides two powerful workflows:
+
+### 1. Batch Video Generation
+Creates personalized AI avatar videos from CSV data:
 
 1. **Script Generation** - Renders personalized scripts from Jinja2 templates with variable substitution
 2. **Text-to-Speech** - Converts scripts to audio using ElevenLabs or OpenAI TTS
 3. **Avatar Video** - Generates lip-synced avatar videos via HeyGen
 4. **Export & Tracking** - Saves outputs locally or to S3 with detailed JSON manifests
 
-Perfect for customer onboarding videos, multilingual training content, personalized marketing campaigns, and scalable video production workflows.
+### 2. Video Translation & Localization
+Translates existing videos to new languages with AI avatars:
+
+1. **Audio Extraction** - Extracts audio from source video using ffmpeg
+2. **Transcription** - Transcribes audio using OpenAI Whisper with automatic language detection
+3. **Style-Aware Translation** - Translates with GPT-4 applying your chosen communication style (casual, business, explainer, etc.)
+4. **TTS Generation** - Creates natural-sounding audio in target language
+5. **Avatar Video** - Generates new lip-synced video with translated content
+
+Perfect for customer onboarding videos, multilingual training content, personalized marketing campaigns, video localization, and scalable video production workflows.
 
 ## Quick Start
 
@@ -35,7 +47,10 @@ make run     # Process data/input/samples.csv
 
 ## Features
 
-- **Async batch processing** with configurable concurrency and rate limiting
+- **Video Translation** - translate existing videos to any language with style-aware AI avatars
+- **Automatic Transcription** - Whisper-powered transcription with language detection
+- **Style-Aware Translation** - 6 translation styles (casual, conversational, business, explainer, formal, technical)
+- **Async batch processing** - configurable concurrency and rate limiting
 - **Provider abstraction** - swap TTS or avatar vendors without changing code
 - **Resume failed jobs** - intelligent retry logic with exponential backoff
 - **Templating engine** - Jinja2 templates for script personalization
@@ -52,11 +67,18 @@ Copy `.env.example` to `.env` and configure:
 |----------|----------|-------------|
 | `HEYGEN_API_KEY` | Yes | HeyGen API key from https://app.heygen.com/settings/api |
 | `ELEVENLABS_API_KEY` | Yes | ElevenLabs API key from https://elevenlabs.io/api |
-| `OPENAI_API_KEY` | No | OpenAI API key for alternative TTS |
+| `OPENAI_API_KEY` | Yes | OpenAI API key for Whisper transcription and GPT-4 translation |
 | `DEFAULT_VOICE` | No | Default voice ID (default: Rachel) |
 | `DEFAULT_AVATAR` | No | Default avatar ID (default: SantaFe_v2) |
+| `GPT_MODEL` | No | GPT model for translation: gpt-4o, gpt-4-turbo, gpt-4 (default: gpt-4o) |
 | `OUTPUT_BUCKET` | No | S3 bucket path like s3://bucket-name |
 | `LOG_LEVEL` | No | Logging level: DEBUG, INFO, WARNING, ERROR |
+
+**System Requirements for Video Translation:**
+- **ffmpeg** - Required for video/audio processing. Install with:
+  - Ubuntu/Debian: `sudo apt-get install ffmpeg`
+  - macOS: `brew install ffmpeg`
+  - Windows: Download from https://ffmpeg.org/
 
 ## CSV Input Schema
 
@@ -148,6 +170,56 @@ python -m amp_video.cli export output/2025-10-31T14-30-45Z/manifest.json --dest 
 ```
 
 Requires `OUTPUT_BUCKET` configured in `.env`.
+
+### 5. Translate Video (NEW!)
+
+Translate an existing video to a new language with style-aware AI avatar:
+
+```bash
+# Basic translation
+python -m amp_video.cli translate input.mp4 Thai
+
+# With custom style
+python -m amp_video.cli translate video.mp4 Spanish --style business
+
+# With specific avatar and voice
+python -m amp_video.cli translate video.mp4 Thai \
+  --style conversational \
+  --avatar SantaFe_v2 \
+  --voice Rachel
+
+# With custom output directory
+python -m amp_video.cli translate input.mp4 "Mandarin Chinese" \
+  --style explainer \
+  --output output/chinese_version
+```
+
+**Options:**
+- `--style` / `-s` - Translation style: `casual`, `conversational` (default), `business`, `explainer`, `formal`, `technical`
+- `--avatar` / `-a` - Avatar ID (uses default if not specified)
+- `--voice` - Voice ID for target language (uses default if not specified)
+- `--output` / `-o` - Custom output directory
+- `--no-detect` - Skip automatic source language detection
+- `--verbose` / `-v` - Enable detailed logging
+
+**Available Translation Styles:**
+
+| Style | Best For | Characteristics |
+|-------|----------|----------------|
+| `casual` | Social media, informal content | Relaxed, friendly, colloquial |
+| `conversational` | General videos, tutorials | Natural, engaging, personal |
+| `business` | Corporate, professional content | Authoritative, clear, professional |
+| `explainer` | Educational, how-to videos | Clear, patient, accessible |
+| `formal` | Official communications | Sophisticated, respectful, dignified |
+| `technical` | Technical documentation, demos | Precise, accurate, terminology-focused |
+
+**Output:**
+The translate command creates a timestamped directory containing:
+- Original transcription (`.txt`)
+- Translated script (`.txt`)
+- Generated TTS audio (`.mp3`)
+- Final translated video (`.mp4`)
+- Translation manifest (`.json`) with all metadata
 
 ## Output Structure
 
@@ -271,23 +343,31 @@ make format            # Auto-format code
 
 ## Roadmap
 
-### MVP (Week 1) ✓
+### MVP ✓
 - [x] CSV ingest and validation
 - [x] Jinja2 templating
 - [x] ElevenLabs TTS integration
 - [x] HeyGen video generation
 - [x] JSON manifest output
 - [x] Basic CLI with render/run commands
+- [x] **Video Translation Pipeline** 🆕
+- [x] **Whisper Transcription** 🆕
+- [x] **GPT-4 Style-Aware Translation** 🆕
+- [x] **6 Translation Styles** 🆕
+- [x] **ffmpeg Audio Extraction** 🆕
 
-### Week 2 Enhancements
+### In Progress
 - [ ] S3 uploader with signed URLs
-- [ ] Resumable batch processing
+- [ ] Resumable batch processing for translations
 - [ ] Language code mapping table
 - [ ] Concurrency controls per provider
 - [ ] Error taxonomy and classification
 - [ ] Streamlit web UI for monitoring
 
 ### Backlog (High Value)
+- [ ] Batch video translation (multiple videos at once)
+- [ ] Subtitle generation and synchronization
+- [ ] Voice cloning for consistency across languages
 - [ ] Google Sheets / Airtable connectors
 - [ ] Webhook notifications (Slack, Teams)
 - [ ] Consent hash tracking for compliance

@@ -9,13 +9,12 @@ class Settings(BaseSettings):
     # Required API keys
     heygen_api_key: str
     elevenlabs_api_key: str
-
-    # Optional API keys
-    openai_api_key: str | None = None
+    openai_api_key: str  # Required for Whisper transcription and GPT translation
 
     # Default provider settings
     default_voice: str = "Rachel"
     default_avatar: str = "SantaFe_v2"
+    gpt_model: str = "gpt-4o"  # GPT model for translation (gpt-4o, gpt-4-turbo, gpt-4)
 
     # Storage settings
     output_bucket: str | None = None
