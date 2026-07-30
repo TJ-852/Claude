@@ -15,7 +15,7 @@
   .best{text-align:right;font-size:15px;opacity:.6;letter-spacing:1px}
   #tierhud{text-align:right;font-size:12px;letter-spacing:2px;opacity:.5;margin-top:6px;text-transform:uppercase}
   #mode{position:fixed;top:14px;left:0;right:0;text-align:center;pointer-events:none;
-    font-size:12px;letter-spacing:3px;opacity:.4;color:#ffd23f;z-index:5;text-transform:uppercase}
+    font-size:12px;letter-spacing:3px;opacity:.5;color:#ffd23f;z-index:5;text-transform:uppercase}
   #combo{position:fixed;left:0;right:0;top:34%;text-align:center;pointer-events:none;
     color:#ffd23f;font-weight:800;font-size:26px;opacity:0;letter-spacing:1px;z-index:5}
   #milestone{position:fixed;left:0;right:0;top:47%;text-align:center;pointer-events:none;
@@ -85,7 +85,7 @@ function beep(freq,dur=0.08,type='sine',vol=0.25){
 }
 function chime(f1,f2){ beep(f1,0.10,'sine',0.22); beep(f2,0.16,'sine',0.15); }
 
-// ---- deterministic RNG (for daily seeded runs) ----
+// ---- deterministic RNG (daily seeded runs) ----
 function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0;
   let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t;
   return ((t^t>>>14)>>>0)/4294967296; }; }
@@ -94,48 +94,61 @@ function fmtDate(d){ return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()
 function todayStr(){ return fmtDate(new Date()); }
 function dailySeed(){ const s=todayStr(); let h=2166136261;
   for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
+function dailyBestToday(){ return +(localStorage['pulseDaily_'+todayStr()]||0); }
 
 // ---- progression / cosmetics ----
 const SKINS=[
-  {name:'Classic',dot:'#ffffff',arc:'#5ac8ff',unlock:0},
-  {name:'Ember',  dot:'#ffd7a1',arc:'#ff7a45',unlock:25},
-  {name:'Toxic',  dot:'#eaffd0',arc:'#7CFC9E',unlock:60},
-  {name:'Violet', dot:'#f0d7ff',arc:'#b46bff',unlock:120},
-  {name:'Solar',  dot:'#fff4c2',arc:'#ffd23f',unlock:250},
+  {name:'Classic',  dot:'#ffffff',arc:'#5ac8ff',unlock:0},
+  {name:'Ember',    dot:'#ffd7a1',arc:'#ff7a45',unlock:25},
+  {name:'Toxic',    dot:'#eaffd0',arc:'#7CFC9E',unlock:60},
+  {name:'Violet',   dot:'#f0d7ff',arc:'#b46bff',unlock:120},
+  {name:'Solar',    dot:'#fff4c2',arc:'#ffd23f',unlock:250},
+  {name:'Ascendant',dot:'#c8fff4',arc:'#00ffd0',unlock:0,asc:1}, // Ascension-1 exclusive
 ];
 function tierFor(s){ return s>=250?'LEGEND':s>=120?'SNIPER':s>=60?'MARKSMAN':s>=25?'SHARPSHOOTER':s>=10?'ROOKIE':'NOVICE'; }
 const ASC=[500,1000,2000,4000,8000,16000];
 function ascRank(lt){ let r=0; ASC.forEach(t=>{ if(lt>=t) r++; }); return r; }
+const PHASE_COLS=['#5ac8ff','#b46bff','#ff7a45','#7CFC9E','#ffd23f','#ff4d6d'];
 
 let best=+(localStorage.pulseBest||0);
 let lifetime=+(localStorage.pulseLifetime||0);
 let streak=+(localStorage.pulseStreak||0);
+let statChests=+(localStorage.pulseChests||0);
+let statPerfects=+(localStorage.pulsePerfects||0);
 let skinIdx=Math.min(SKINS.length-1,+(localStorage.pulseSkin||0));
-function unlocked(i){ return best>=SKINS[i].unlock; }
+function unlocked(i){ const sk=SKINS[i]; return sk.asc ? ascRank(lifetime)>=sk.asc : best>=sk.unlock; }
 if(!unlocked(skinIdx)) skinIdx=0;
 function skin(){ return SKINS[skinIdx]; }
 
 function refreshMeta(){
   $('best').textContent=best; $('tierhud').textContent=tierFor(best);
+  if(!$('meta')) return;
   const asc=ascRank(lifetime), next=ASC[asc];
+  const playedToday=localStorage.pulseLastDay===todayStr();
+  const streakLine = streak>0 && !playedToday
+    ? `🔥 <b>Day ${streak}</b> — play today to keep it!`
+    : `🔥 <b>Day ${streak||0}</b> streak`;
   $('meta').innerHTML =
-    `🔥 <b>Day ${streak||0}</b> streak &nbsp;·&nbsp; Lifetime <b>${lifetime}</b> pts` +
+    streakLine+` &nbsp;·&nbsp; Lifetime <b>${lifetime}</b> pts` +
     (asc>0?` &nbsp;·&nbsp; <b style="color:#ffd23f">Ascension ${asc}</b>`:'') +
-    (next?`<br><span style="opacity:.5;font-size:12px">${next-lifetime} lifetime pts to Ascension ${asc+1}</span>`:'<br><span style="opacity:.5;font-size:12px">Max ascension reached</span>');
+    (next?`<br><span style="opacity:.55;font-size:12px">${next-lifetime} lifetime pts to Ascension ${asc+1}${ascPerkHint(asc+1)}</span>`:'<br><span style="opacity:.55;font-size:12px">Max ascension reached</span>') +
+    (dailyBestToday()?`<br><span style="opacity:.55;font-size:12px">Today's daily best: <b>${dailyBestToday()}</b></span>`:'') +
+    `<br><span style="opacity:.45;font-size:12px">📦 ${statChests} chests · 🎯 ${statPerfects} perfects</span>`;
 }
+function ascPerkHint(r){ return r===1?' (skin)':r===2?' (+1 start shield)':r===3?' (dot trail)':''; }
 function renderSkinRow(){
-  const row=$('skinrow'); row.innerHTML='';
+  const row=$('skinrow'); if(!row) return; row.innerHTML='';
   SKINS.forEach((sk,i)=>{ const b=document.createElement('button'); b.dataset.ui='1';
     const locked=!unlocked(i); b.className=locked?'lock':'';
-    b.innerHTML=`<span class="swatch" style="background:${sk.arc}"></span> ${locked?('★'+sk.unlock):sk.name}`;
+    b.innerHTML=`<span class="swatch" style="background:${sk.arc}"></span> ${locked?(sk.asc?('ASC '+sk.asc):('★'+sk.unlock)):sk.name}`;
     if(i===skinIdx) b.style.borderColor=sk.arc;
     b.onclick=e=>{ e.stopPropagation(); if(locked) return; skinIdx=i; localStorage.pulseSkin=i; renderSkinRow(); };
     row.appendChild(b); });
 }
 let dailyMode=false;
 function refreshDailyBtn(){ const b=$('dailyBtn'); if(!b)return;
-  b.className=dailyMode?'on':''; b.textContent=dailyMode?'DAILY RUN ✓':'DAILY RUN';
-  $('mode').textContent=dailyMode?('DAILY · '+todayStr()):''; }
+  b.className=dailyMode?'on':''; b.textContent=dailyMode?'DAILY RUN ✓ (2× lifetime)':'DAILY RUN';
+  $('mode').textContent=dailyMode?('DAILY · '+todayStr()+(dailyBestToday()?(' · BEST '+dailyBestToday()):'')):''; }
 refreshMeta(); renderSkinRow();
 setTimeout(()=>{ const b=$('dailyBtn'); if(b) b.onclick=e=>{ e.stopPropagation(); dailyMode=!dailyMode; refreshDailyBtn(); }; refreshDailyBtn(); },0);
 
@@ -143,37 +156,41 @@ setTimeout(()=>{ const b=$('dailyBtn'); if(b) b.onclick=e=>{ e.stopPropagation()
 const S={menu:0,play:1,dying:2,dead:3};
 let state=S.menu;
 let score=0,combo=0,hits=0,shields=2,comboPeak=0;
+let perfectStreak=0,sinceShield=0,jackpotHits=0,phase=0;
+let runChests=0,runPerfects=0;
 let ang=0,dir=1,speed=0,targetA=0,targetHalf=0.42,gold=false,pendingRev=false;
 let shake=0,ringPulse=0,flash=0,flashColor='255,255,255',reversalGlow=0;
-let dyingT=0,timeScale=1,slowmo=0,hbT=0,tintHits=0,nextChest=0;
+let dyingT=0,timeScale=1,slowmoT=0,slowmoS=1,hbT=0,tintHits=0,nextChest=0;
 let tickIdx=0;
-let particles=[],shocks=[];
+let particles=[],shocks=[],trail=[];
 const milestonesHit=new Set();
-const TICKB=[0.5,0.36,0.24,0.14], TICKF=[470,600,760,950];
+// tick ladder is TIME-TO-IMPACT based (seconds), so the crescendo survives any speed
+const TICKB=[0.28,0.20,0.13,0.07], TICKF=[470,600,760,950];
 
 function rand(a,b){ return a+Math.random()*(b-a); }
 function angleDiff(a,b){ let d=(a-b)%(Math.PI*2); if(d>Math.PI)d-=Math.PI*2; if(d<-Math.PI)d+=Math.PI*2; return d; }
-function curSpeed(){ return 2.1 + (6.2-2.1)*(1-Math.exp(-hits/55)) + Math.max(0,hits-60)*0.004; } // soft-cap + slow creep
-function curHalf(){ return 0.13 + 0.29*Math.exp(-hits/120); } // never hard-floors — edge keeps moving
+function curSpeed(){ return 2.1 + (6.2-2.1)*(1-Math.exp(-hits/55)) + Math.max(0,hits-60)*0.004; }
+function curHalf(){ return 0.13 + 0.29*Math.exp(-hits/120); }
 
-function newTarget(){
-  const gap=Math.min(Math.PI*0.85, Math.max(0.9, speed*0.22)); // ~220ms reposition at any speed
+function newTarget(keepRev){
+  const gap=Math.min(Math.PI*0.85, Math.max(0.9, speed*0.22));
   let a; do { a=rng()*Math.PI*2; } while (Math.abs(angleDiff(a,ang))<gap);
   targetA=a; targetHalf=curHalf();
   gold = tintHits>0 ? true : (rng()<0.14);
-  // pre-announce a reversal for THIS upcoming pass (no chaining)
-  pendingRev = pendingRev ? false : (rng()<0.25);
+  // pre-announce reversals; a graze must NOT cancel an announced flip (keepRev)
+  if(!keepRev) pendingRev = pendingRev ? false : (rng()<0.25);
   tickIdx=0;
 }
 
 function start(){
-  score=0; combo=0; hits=0; shields=2; comboPeak=0;
-  ang=-Math.PI/2; dir=1; particles=[]; shocks=[];
-  dyingT=0; timeScale=1; slowmo=0; hbT=0; tintHits=0; pendingRev=false;
+  score=0; combo=0; hits=0; comboPeak=0;
+  perfectStreak=0; sinceShield=0; jackpotHits=0; phase=0; runChests=0; runPerfects=0;
+  shields = ascRank(lifetime)>=2 ? 3 : 2;      // Ascension-2 perk
+  ang=-Math.PI/2; dir=1; particles=[]; shocks=[]; trail=[];
+  dyingT=0; timeScale=1; slowmoT=0; hbT=0; tintHits=0; pendingRev=false;
   milestonesHit.clear();
   rng = dailyMode ? mulberry32(dailySeed()) : Math.random;
   speed=curSpeed(); nextChest = 8 + Math.floor(rng()*8);
-  bumpStreak();
   $('score').textContent=0; updShields();
   newTarget(); state=S.play; $('msg').classList.add('hidden');
 }
@@ -204,14 +221,16 @@ function checkMilestone(){ [25,50,100,200,400,700,1000].forEach(m=>{
 
 function openChest(){
   const px=CX+Math.cos(ang)*R, py=CY+Math.sin(ang)*R;
-  const roll = rng();
-  let txt;
-  if(roll<0.34){ const b=15+combo; score+=b; txt='✦ CHEST +'+b+' PTS'; }
-  else if(roll<0.62 && shields<3){ shields++; updShields(); txt='✦ CHEST +1 SHIELD 🛡'; }
+  const roll=rng(); let txt;
+  if(roll<0.05){ jackpotHits=10; txt='✦ JACKPOT · ×2 FOR 10 HITS'; }              // rare jackpot tier
+  else if(roll<0.40 && shields<3){ shields++; updShields(); txt='✦ CHEST +1 SHIELD 🛡'; }
+  else if(roll<0.70){ const b=15+combo; score+=b; txt='✦ CHEST +'+b+' PTS'; }
   else { tintHits=6; txt='✦ CHEST · GOLD RUSH ×6'; }
+  runChests++;
   $('score').textContent=score;
   popText($('chest'), txt, 1.3);
-  burst(px,py,'#7CFC9E',22); flash=0.35; flashColor='124,252,158'; chime(880,1174);
+  burst(px,py, roll<0.05?'#ffd23f':'#7CFC9E', roll<0.05?32:22);
+  flash=0.35; flashColor=roll<0.05?'255,210,63':'124,252,158'; chime(880,1174);
   nextChest = hits + 8 + Math.floor(rng()*8);
 }
 
@@ -225,28 +244,38 @@ function tap(){
   const px=CX+Math.cos(ang)*R, py=CY+Math.sin(ang)*R;
 
   if(d<=targetHalf){
-    const perfect=d<=targetHalf*0.35;
-    hits++; combo++; comboPeak=Math.max(comboPeak,combo);
+    // perfect zone is TIME-floored (~50ms) so the skill ceiling never becomes frame-luck
+    const perfect = d <= Math.max(targetHalf*0.35, speed*0.025);
+    hits++; combo++; comboPeak=Math.max(comboPeak,combo); sinceShield++;
     if(tintHits>0) tintHits--;
     let gain=(perfect?2:1)*(gold?3:1)*(1+Math.floor(combo/5)*0.5);
+    if(jackpotHits>0){ gain*=2; jackpotHits--; }
     gain=Math.round(gain); score+=gain; $('score').textContent=score;
     speed=curSpeed();
     if(pendingRev){ dir*=-1; reversalGlow=1; beep(300,0.12,'sine',0.18); }
     burst(px,py, gold?'#ffd23f':(perfect?skin().arc:'#7CFC9E'), gold?26:(perfect?16:10));
     shake=perfect?9:5; ringPulse=1; flash=gold?0.5:0; flashColor='255,255,255';
-    if(perfect){ shockwave(px,py,skin().arc); slowmo=0.06; chime(784,1046); }        // perfect-hit juice
-    else beep((gold?880:520)+combo*6,0.09,'triangle',0.28);
+    if(perfect){ // hard freeze + shockwave + rising chime on consecutive perfects
+      perfectStreak=Math.min(8,perfectStreak+1); runPerfects++;
+      shockwave(px,py,skin().arc); slowmoT=0.07; slowmoS=0.05;
+      chime(784+perfectStreak*40, 1046+perfectStreak*40);
+    } else { perfectStreak=0; beep((gold?880:520)+combo*6,0.09,'triangle',0.28); }
     if(combo>0&&combo%5===0){ popText($('combo'),'COMBO ×'+(1+Math.floor(combo/5)*0.5),1.25); beep(990,0.14,'sine',0.2); }
-    if(score>=(shields+1)*40 && shields<3){ shields++; updShields(); beep(1200,0.12,'sine',0.18); }
+    // shield regen is HIT-keyed so it can't collapse as per-hit score scales
+    if(sinceShield>=25 && shields<3){ shields++; sinceShield=0; updShields(); beep(1200,0.12,'sine',0.18); }
     if(hits>=nextChest) openChest();
+    const ph=Math.floor(hits/50);
+    if(ph!==phase){ phase=ph; popText($('milestone'),'PHASE '+(phase+1),1.5);
+      flash=0.45; flashColor=hexToRgb(PHASE_COLS[phase%PHASE_COLS.length]); chime(1174,1568); }
     checkMilestone();
     newTarget();
   } else if(d<=targetHalf*1.4 && shields>0){
-    // GRAZE — a teaching near-miss: costs a shield, halves combo, brief slow-mo so the boundary is FELT
-    shields--; updShields(); combo=Math.floor(combo/2);
+    // GRAZE — gentle time-stretch (vs the perfect's hard freeze), halved combo, shield spent.
+    // The announced reversal (if any) is preserved: the warning stays honest.
+    shields--; updShields(); combo=Math.floor(combo/2); perfectStreak=0;
     burst(px,py,'#5ac8ff',10); shake=6; ringPulse=1; flash=0.22; flashColor='90,200,255';
-    slowmo=0.10; beep(200,0.18,'square',0.24); beep(150,0.12,'square',0.16);
-    newTarget();
+    slowmoT=0.35; slowmoS=0.35; beep(200,0.18,'square',0.24); beep(150,0.12,'square',0.16);
+    newTarget(true);
   } else {
     die(px,py);
   }
@@ -256,7 +285,7 @@ function die(px,py){ state=S.dying; dyingT=0; shake=18; flash=0.7; flashColor='2
   burst(px||CX,py||CY,'#ff4d6d',34); beep(160,0.35,'sawtooth',0.3); }
 
 let unlockedBefore=new Set(); let justUnlocked=[];
-function snapshotUnlocks(){ unlockedBefore=new Set(SKINS.filter(s=>best>=s.unlock&&s.unlock>0).map(s=>s.unlock)); }
+function snapshotUnlocks(){ unlockedBefore=new Set(SKINS.map((s,i)=>unlocked(i)?i:-1).filter(i=>i>0)); }
 snapshotUnlocks();
 
 function makeShareCard(){
@@ -271,9 +300,12 @@ function makeShareCard(){
   g.font='900 34px Segoe UI,sans-serif'; g.fillText('P U L S E',300,54);
   g.font='900 90px Segoe UI,sans-serif'; g.fillStyle=sk.arc; g.fillText(score,300,185);
   g.font='600 20px Segoe UI,sans-serif'; g.fillStyle='#fff';
-  g.fillText(tierFor(score)+'  ·  combo ×'+(1+Math.floor(comboPeak/5)*0.5).toFixed(1),300,235);
-  g.font='500 15px Segoe UI,sans-serif'; g.fillStyle='rgba(255,255,255,.5)';
-  g.fillText('can you beat it?',300,278);
+  g.fillText(tierFor(score)+'  ·  combo ×'+(1+Math.floor(comboPeak/5)*0.5).toFixed(1),300,232);
+  const asc=ascRank(lifetime);
+  g.font='500 15px Segoe UI,sans-serif'; g.fillStyle='rgba(255,210,63,.85)';
+  g.fillText((asc>0?('ASCENSION '+asc+'  ·  '):'')+'Day '+streak+' 🔥',300,262);
+  g.font='500 14px Segoe UI,sans-serif'; g.fillStyle='rgba(255,255,255,.5)';
+  g.fillText('can you beat it?',300,290);
   return c;
 }
 function shareCard(btn){
@@ -292,11 +324,20 @@ function shareCard(btn){
 function finalizeDeath(){
   state=S.dead;
   const isBest=score>best;
-  lifetime+=score; localStorage.pulseLifetime=lifetime;
-  const ascBefore=ascRank(lifetime-score), ascNow=ascRank(lifetime);
-  if(isBest){ best=score; localStorage.pulseBest=best; renderSkinRow(); }
-  if(dailyMode){ const dk='pulseDaily_'+todayStr(); if(score>+(localStorage[dk]||0)) localStorage[dk]=score; }
-  refreshMeta();
+  if(score>=10) bumpStreak();                        // streak requires a real run, not an instant quit
+  const ascBefore=ascRank(lifetime);
+  lifetime += score*(dailyMode?2:1);                 // daily runs pay 2× lifetime
+  localStorage.pulseLifetime=lifetime;
+  const ascNow=ascRank(lifetime);
+  statChests+=runChests; statPerfects+=runPerfects;
+  localStorage.pulseChests=statChests; localStorage.pulsePerfects=statPerfects;
+  if(isBest){ best=score; localStorage.pulseBest=best; }
+  let dailyLine='';
+  if(dailyMode){ const dk='pulseDaily_'+todayStr();
+    if(score>+(localStorage[dk]||0)) localStorage[dk]=score;
+    dailyLine=' &nbsp;·&nbsp; DAILY BEST '+localStorage[dk]; }
+  justUnlocked=SKINS.filter((s,i)=>i>0&&unlocked(i)&&!unlockedBefore.has(i)).map(s=>s.name);
+  snapshotUnlocks();
   let head,sub;
   if(isBest&&score>0){ head='NEW BEST!'; sub='You beat your record'; }
   else if(best>0&&score>=best*0.8&&score<best){ head='SO CLOSE'; sub=(best-score)+' from your BEST'; }
@@ -306,16 +347,22 @@ function finalizeDeath(){
   m.innerHTML=
     `<h1 style="font-size:34px;letter-spacing:3px">${head}</h1>`+
     `<p class="big" style="font-size:54px;margin-top:4px;color:#fff;-webkit-text-fill-color:#fff">${score}</p>`+
-    `<p style="opacity:.6">${sub} &nbsp;·&nbsp; ${tierFor(score)} &nbsp;·&nbsp; combo peaked ×${mult}${dailyMode?' &nbsp;·&nbsp; DAILY':''}</p>`+
+    `<p style="opacity:.6">${sub} &nbsp;·&nbsp; ${tierFor(score)} &nbsp;·&nbsp; combo peaked ×${mult}${dailyLine}</p>`+
     (justUnlocked.length?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;margin-top:12px">✦ SKIN UNLOCKED: ${justUnlocked.join(', ')}</p>`:'')+
-    (ascNow>ascBefore?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;margin-top:10px">✦ ASCENSION ${ascNow} REACHED</p>`:'')+
-    `<p style="opacity:.5;font-size:13px;margin-top:12px">🔥 Day ${streak} &nbsp;·&nbsp; Lifetime ${lifetime}</p>`+
+    (ascNow>ascBefore?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;margin-top:10px">✦ ASCENSION ${ascNow} REACHED${ascPerkHint(ascNow)}</p>`:'')+
+    `<p style="opacity:.5;font-size:13px;margin-top:12px">🔥 Day ${streak} &nbsp;·&nbsp; Lifetime ${lifetime} &nbsp;·&nbsp; 📦 ${statChests} &nbsp;·&nbsp; 🎯 ${statPerfects}</p>`+
     `<div class="row" data-ui>`+
       `<button data-ui id="shareBtn">SHARE CARD</button>`+
       `<button data-ui id="copyBtn">COPY TEXT</button>`+
       `<button data-ui id="againBtn">PLAY AGAIN ▸</button>`+
     `</div>`+
+    // rebuild menu extras so the skin picker & daily toggle survive past the first death
+    `<div class="row" data-ui><button data-ui id="dailyBtn">DAILY RUN</button></div>`+
+    `<div class="row" id="skinrow" data-ui></div>`+
     `<p style="opacity:.35;font-size:12px;margin-top:16px">tap anywhere to retry</p>`;
+  renderSkinRow();
+  const db=$('dailyBtn'); db.onclick=e=>{ e.stopPropagation(); dailyMode=!dailyMode; refreshDailyBtn(); };
+  refreshDailyBtn();
   $('againBtn').onclick=e=>{ e.stopPropagation(); reset(); };
   $('shareBtn').onclick=e=>{ e.stopPropagation(); shareCard($('shareBtn')); };
   $('copyBtn').onclick=e=>{ e.stopPropagation();
@@ -330,20 +377,27 @@ function frame(now){
 
   if(state===S.dying){ dyingT+=rdt;
     timeScale = dyingT<0.12 ? 0.08 : Math.min(1,0.08+(dyingT-0.12)*2);
-    if(dyingT>0.55){ justUnlocked=SKINS.filter(s=>s.unlock>0&&best>=s.unlock&&!unlockedBefore.has(s.unlock)).map(s=>s.name); finalizeDeath(); }
-  } else if(slowmo>0){ slowmo-=rdt; timeScale=0.18; }
+    if(dyingT>0.55) finalizeDeath();
+  } else if(slowmoT>0){ slowmoT-=rdt; timeScale=slowmoS; }
   else timeScale=1;
   const dt=rdt*timeScale;
 
   if(state===S.play){
     ang+=dir*speed*dt; if(ang>Math.PI*2)ang-=Math.PI*2; if(ang<0)ang+=Math.PI*2;
     const d=Math.abs(angleDiff(ang,targetA));
-    while(tickIdx<TICKB.length && d<TICKB[tickIdx]){ beep(TICKF[tickIdx],0.035,'sine',0.06+tickIdx*0.012); tickIdx++; } // rising telegraph
-    if(d>0.6) tickIdx=0;
-    // heartbeat ambience, tempo'd to speed
+    const tti=d/speed; // time-to-impact keeps the tick ladder a ladder at any speed
+    while(tickIdx<TICKB.length && tti<TICKB[tickIdx]){ beep(TICKF[tickIdx],0.035,'sine',0.06+tickIdx*0.012); tickIdx++; }
+    if(tti>0.4) tickIdx=0;
+    // heartbeat ambience (audible octave), tempo'd to speed
     hbT+=rdt; const beatT=Math.max(0.30,0.85-(speed-2.1)*0.08);
-    if(hbT>=beatT){ hbT=0; beep(60,0.10,'sine',0.05); beep(48,0.13,'sine',0.04); }
+    if(hbT>=beatT){ hbT=0; beep(120,0.09,'sine',0.06); beep(96,0.12,'sine',0.05); }
+    // Ascension-3 perk: dot trail
+    if(ascRank(lifetime)>=3){
+      trail.push({x:CX+Math.cos(ang)*R,y:CY+Math.sin(ang)*R,a:0.5});
+      if(trail.length>14) trail.shift();
+    }
   }
+  trail.forEach(t=>{ t.a-=rdt*1.4; }); trail=trail.filter(t=>t.a>0);
 
   shake*=0.86; ringPulse*=0.90; flash*=0.88; reversalGlow*=0.90;
   particles.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=0.15; p.vx*=0.97; p.life-=rdt*1.6; });
@@ -355,7 +409,12 @@ function frame(now){
   const sx=(Math.random()-0.5)*shake, sy=(Math.random()-0.5)*shake;
   ctx.save(); ctx.translate(sx,sy);
 
-  // combo vignette — intensifies with combo (continuous escalation)
+  // phase tint — palette rotates every 50 hits so long runs travel somewhere
+  if(state===S.play && phase>0){
+    ctx.fillStyle='rgba('+hexToRgb(PHASE_COLS[phase%PHASE_COLS.length])+',0.05)';
+    ctx.fillRect(-sx-50,-sy-50,W+100,H+100);
+  }
+  // combo vignette
   if(state===S.play && combo>2){
     const vi=Math.min(0.42,combo*0.018), sk=skin();
     const vg=ctx.createRadialGradient(CX,CY,R*0.6,CX,CY,Math.max(W,H)*0.7);
@@ -364,7 +423,7 @@ function frame(now){
     ctx.fillStyle=vg; ctx.fillRect(-sx-50,-sy-50,W+100,H+100);
   }
 
-  // base ring — tinted while a reversal is pending (the warning), flashes on the flip
+  // base ring — gold-tinted while a reversal is pending
   ctx.lineWidth=6;
   const warn = state===S.play && pendingRev;
   ctx.strokeStyle='rgba('+(reversalGlow>0.05||warn?'255,210,63':'255,255,255')+','+(0.10+ringPulse*0.25+reversalGlow*0.4+(warn?0.18:0))+')';
@@ -373,21 +432,21 @@ function frame(now){
   if(state!==S.menu){
     const sk=skin();
     const d=Math.abs(angleDiff(ang,targetA)), p=Math.max(0,1-d/0.6);
-    // graze band (faint) so the near-miss zone is legible
     if(state===S.play && shields>0){ ctx.lineWidth=18; ctx.strokeStyle='rgba(90,200,255,.09)';
       ctx.beginPath(); ctx.arc(CX,CY,R,targetA-targetHalf*1.4,targetA+targetHalf*1.4); ctx.stroke(); }
-    // target arc — "inhales" (brightens + widens) as the dot nears
     ctx.lineWidth=14+p*8; ctx.lineCap='round';
     ctx.strokeStyle=gold?'#ffd23f':sk.arc; ctx.shadowColor=ctx.strokeStyle; ctx.shadowBlur=22+p*22;
     ctx.beginPath(); ctx.arc(CX,CY,R,targetA-targetHalf,targetA+targetHalf); ctx.stroke();
     ctx.shadowBlur=0; ctx.lineCap='butt';
-    // dot — scales + brightens as it nears the arc
+    // trail (Ascension-3)
+    trail.forEach(t=>{ ctx.globalAlpha=Math.max(0,t.a); ctx.fillStyle=sk.dot;
+      ctx.beginPath(); ctx.arc(t.x,t.y,4,0,Math.PI*2); ctx.fill(); });
+    ctx.globalAlpha=1;
     const dx=CX+Math.cos(ang)*R, dy=CY+Math.sin(ang)*R;
     ctx.fillStyle=sk.dot; ctx.shadowColor=sk.dot; ctx.shadowBlur=14+p*26;
     ctx.beginPath(); ctx.arc(dx,dy,9+p*6,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
   }
 
-  // shockwaves (perfect hits)
   shocks.forEach(s=>{ ctx.globalAlpha=Math.max(0,s.a); ctx.strokeStyle=s.color; ctx.lineWidth=3;
     ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.stroke(); });
   ctx.globalAlpha=1;
