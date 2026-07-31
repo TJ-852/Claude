@@ -1,0 +1,606 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="disabled-adaptations" content="watch">
+<title>PULSE</title>
+<style>
+  html,body{margin:0;height:100%;background:#0a0a12;overflow:hidden;
+    font-family:'Segoe UI',system-ui,sans-serif;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  canvas{display:block;background:radial-gradient(circle at 50% 42%,#141426 0%,#0a0a12 70%)}
+  #hud{position:fixed;top:0;left:0;right:0;padding:18px 22px;display:flex;
+    justify-content:space-between;pointer-events:none;color:#fff;z-index:5}
+  .score{font-size:44px;font-weight:800;letter-spacing:1px;line-height:1;
+    text-shadow:0 2px 18px rgba(90,200,255,.35)}
+  .sub{font-size:13px;opacity:.55;letter-spacing:2px;margin-top:4px;text-transform:uppercase}
+  #shields{margin-top:8px;font-size:15px;letter-spacing:3px;color:#5ac8ff;height:16px}
+  .best{text-align:right;font-size:15px;opacity:.6;letter-spacing:1px}
+  #tierhud{text-align:right;font-size:12px;letter-spacing:2px;opacity:.5;margin-top:6px;text-transform:uppercase}
+  #mode{position:fixed;top:14px;left:0;right:0;text-align:center;pointer-events:none;
+    font-size:12px;letter-spacing:3px;opacity:.5;color:#ffd23f;z-index:5;text-transform:uppercase}
+  #combo{position:fixed;left:0;right:0;top:34%;text-align:center;pointer-events:none;
+    color:#ffd23f;font-weight:800;font-size:26px;opacity:0;letter-spacing:1px;z-index:5}
+  #milestone{position:fixed;left:0;right:0;top:47%;text-align:center;pointer-events:none;
+    font-weight:900;font-size:40px;opacity:0;letter-spacing:4px;z-index:6;
+    color:#fff;text-shadow:0 0 30px rgba(255,210,63,.8)}
+  #chest{position:fixed;left:0;right:0;top:60%;text-align:center;pointer-events:none;
+    color:#7CFC9E;font-weight:800;font-size:22px;opacity:0;letter-spacing:1px;z-index:6}
+  #msg{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;color:#fff;text-align:center;z-index:10;
+    background:rgba(10,10,18,.72);backdrop-filter:blur(3px);padding:20px;box-sizing:border-box;overflow-y:auto}
+  #msg h1{font-size:58px;margin:0;font-weight:900;letter-spacing:6px;
+    background:linear-gradient(90deg,#5ac8ff,#ffd23f);-webkit-background-clip:text;
+    background-clip:text;color:transparent}
+  #msg p{opacity:.7;font-size:15px;letter-spacing:1px;margin:11px 0 0}
+  #msg .big{font-size:20px;opacity:.9;margin-top:18px}
+  .go-head{font-size:34px !important;letter-spacing:3px !important}
+  .go-score{font-size:54px;margin-top:4px;color:#fff;-webkit-text-fill-color:#fff}
+  .pill{margin-top:22px;padding:12px 28px;border:1.5px solid rgba(255,255,255,.25);
+    border-radius:40px;font-size:13px;letter-spacing:2px;opacity:.85}
+  .row{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;justify-content:center}
+  button{font-family:inherit;cursor:pointer;color:#fff;background:rgba(255,255,255,.08);
+    border:1.5px solid rgba(255,255,255,.22);border-radius:30px;padding:10px 18px;
+    font-size:12px;letter-spacing:1.5px}
+  button:hover{background:rgba(255,255,255,.16)}
+  button:focus-visible{outline:2px solid #5ac8ff;outline-offset:2px}
+  .swatch{width:22px;height:22px;border-radius:50%;display:inline-block;vertical-align:middle}
+  #meta{margin-top:16px;font-size:13px;opacity:.6;letter-spacing:1px;line-height:1.8}
+  .hidden{display:none!important}
+  .lock{opacity:.4}
+  .on{border-color:#ffd23f!important;color:#ffd23f}
+  /* Apple Watch & other tiny screens (paired with disabled-adaptations meta) */
+  @media (max-width:290px){
+    #hud{padding:8px 10px}
+    .score{font-size:24px}.sub{font-size:8px;letter-spacing:1px;margin-top:2px}
+    #shields{font-size:10px;margin-top:3px;letter-spacing:1px}
+    .best{font-size:9px}#tierhud{font-size:7px;margin-top:2px}
+    #mode{font-size:7px;top:4px;letter-spacing:1px}
+    #combo{font-size:13px}#milestone{font-size:18px;letter-spacing:2px}#chest{font-size:11px}
+    #msg{padding:8px;justify-content:flex-start}
+    #msg h1{font-size:24px;letter-spacing:2px}
+    #msg p{font-size:9px;margin:4px 0 0;letter-spacing:.5px}
+    #msg .big{font-size:11px;margin-top:6px}
+    .go-head{font-size:16px !important;letter-spacing:1px !important}
+    .go-score{font-size:26px;margin-top:2px}
+    .pill{padding:5px 12px;font-size:8px;margin-top:8px;letter-spacing:1px}
+    .row{gap:5px;margin-top:8px}
+    button{padding:5px 9px;font-size:8px;letter-spacing:.5px}
+    .swatch{width:12px;height:12px}
+    #meta{font-size:8px;line-height:1.5;margin-top:8px;letter-spacing:.5px}
+  }
+</style>
+
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="mode"></div>
+<div id="hud">
+  <div><div class="score" id="score">0</div><div class="sub">Score</div><div id="shields"></div></div>
+  <div class="best">BEST<br><span id="best">0</span><div id="tierhud"></div></div>
+</div>
+<div id="combo"></div>
+<div id="milestone"></div>
+<div id="chest"></div>
+<div id="msg">
+  <h1>PULSE</h1>
+  <p>Tap when the dot crosses the <b style="color:#5ac8ff">glowing arc</b></p>
+  <p style="opacity:.5;font-size:13px">Rising ticks = the strike is near · near-miss spends a <b style="color:#5ac8ff">shield</b> 🛡 · a <b style="color:#ffd23f">tinted ring</b> warns of a reversal</p>
+  <div id="meta"></div>
+  <div class="row" data-ui><button data-ui id="dailyBtn">DAILY RUN</button></div>
+  <div class="row" id="skinrow" data-ui></div>
+  <p class="big" id="mtip">Tap / Space to start</p>
+  <div class="pill">ONE TAP · DON'T MISS</div>
+</div>
+
+<script>
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+const $=id=>document.getElementById(id);
+const TINY=Math.min(window.innerWidth,window.innerHeight)<=290; // Apple Watch class devices
+let W,H,CX,CY,R;
+function resize(){ const s=Math.min(window.innerWidth,window.innerHeight);
+  W=cv.width=window.innerWidth; H=cv.height=window.innerHeight; CX=W/2; CY=H*(TINY?0.5:0.46); R=s*(TINY?0.36:0.30); }
+window.addEventListener('resize',resize); resize();
+function blur(v){ return TINY?v*0.35:v; } // shadowBlur is costly on watch-class GPUs
+
+// ---- audio ----
+let AC;
+function beep(freq,dur=0.08,type='sine',vol=0.25){
+  try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type; o.frequency.value=freq; o.connect(g); g.connect(AC.destination);
+    const t=AC.currentTime; g.gain.setValueAtTime(vol,t);
+    g.gain.exponentialRampToValueAtTime(0.001,t+dur); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+function chime(f1,f2){ beep(f1,0.10,'sine',0.22); beep(f2,0.16,'sine',0.15); }
+
+// ---- deterministic RNG (daily seeded runs) ----
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0;
+  let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t;
+  return ((t^t>>>14)>>>0)/4294967296; }; }
+let rng=Math.random;
+function fmtDate(d){ return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function todayStr(){ return fmtDate(new Date()); }
+function dailySeed(){ const s=todayStr(); let h=2166136261;
+  for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
+function dailyBestToday(){ return +(localStorage['pulseDaily_'+todayStr()]||0); }
+
+// ---- progression / cosmetics ----
+const SKINS=[
+  {name:'Classic',  dot:'#ffffff',arc:'#5ac8ff',unlock:0},
+  {name:'Ember',    dot:'#ffd7a1',arc:'#ff7a45',unlock:25},
+  {name:'Toxic',    dot:'#eaffd0',arc:'#7CFC9E',unlock:60},
+  {name:'Violet',   dot:'#f0d7ff',arc:'#b46bff',unlock:120},
+  {name:'Solar',    dot:'#fff4c2',arc:'#ffd23f',unlock:250},
+  {name:'Ascendant',dot:'#c8fff4',arc:'#00ffd0',unlock:0,asc:1},
+  {name:'Phantom',  dot:'#10131f',arc:'#f5f7ff',unlock:0,secret:true}, // hidden: 3 lifetime perfects on a reversal
+];
+function tierFor(s){ return s>=250?'LEGEND':s>=120?'SNIPER':s>=60?'MARKSMAN':s>=25?'SHARPSHOOTER':s>=10?'ROOKIE':'NOVICE'; }
+const ASC=[500,1000,2000,4000,8000,16000];
+function ascRank(lt){ let r=0; ASC.forEach(t=>{ if(lt>=t) r++; }); return r; }
+const PHASE_COLS=['#5ac8ff','#b46bff','#ff7a45','#7CFC9E','#ffd23f','#ff4d6d'];
+const MILESTONES=[25,50,100,200,400,700,1000];
+
+let best=+(localStorage.pulseBest||0);
+let lifetime=+(localStorage.pulseLifetime||0);
+let streak=+(localStorage.pulseStreak||0);
+let statChests=+(localStorage.pulseChests||0);
+let statPerfects=+(localStorage.pulsePerfects||0);
+let statComets=+(localStorage.pulseComets||0);
+let revPerfects=+(localStorage.pulseRevPerfects||0);
+let skinIdx=Math.min(SKINS.length-1,+(localStorage.pulseSkin||0));
+function unlocked(i){ const sk=SKINS[i];
+  if(sk.secret) return localStorage.pulsePhantom==='1';
+  return sk.asc ? ascRank(lifetime)>=sk.asc : best>=sk.unlock; }
+if(!unlocked(skinIdx)) skinIdx=0;
+function skin(){ return SKINS[skinIdx]; }
+
+function refreshMeta(){
+  $('best').textContent=best; $('tierhud').textContent=tierFor(best);
+  if(!$('meta')) return;
+  const asc=ascRank(lifetime), next=ASC[asc];
+  const playedToday=localStorage.pulseLastDay===todayStr();
+  const streakLine = streak>0 && !playedToday
+    ? `🔥 <b>Day ${streak}</b> — play today to keep it!`
+    : `🔥 <b>Day ${streak||0}</b> streak`;
+  $('meta').innerHTML =
+    streakLine+` &nbsp;·&nbsp; Lifetime <b>${lifetime}</b> pts` +
+    (asc>0?` &nbsp;·&nbsp; <b style="color:#ffd23f">Ascension ${asc}</b>`:'') +
+    (next?`<br><span style="opacity:.55;font-size:.92em">${next-lifetime} lifetime pts to Ascension ${asc+1}${ascPerkHint(asc+1)}</span>`:'<br><span style="opacity:.55;font-size:.92em">Max ascension reached</span>') +
+    (dailyBestToday()?`<br><span style="opacity:.55;font-size:.92em">Today's daily best: <b>${dailyBestToday()}</b></span>`:'') +
+    `<br><span style="opacity:.45;font-size:.92em">📦 ${statChests} · 🎯 ${statPerfects}${statComets?' · ☄ '+statComets:''}</span>`;
+}
+function ascPerkHint(r){ return r===1?' (skin)':r===2?' (+1 start shield)':r===3?' (dot trail)':''; }
+function renderSkinRow(){
+  const row=$('skinrow'); if(!row) return; row.innerHTML='';
+  SKINS.forEach((sk,i)=>{ const b=document.createElement('button'); b.dataset.ui='1';
+    const locked=!unlocked(i); b.className=locked?'lock':'';
+    b.innerHTML=`<span class="swatch" style="background:${sk.arc}"></span> ${locked?(sk.secret?'???':(sk.asc?('ASC '+sk.asc):('★'+sk.unlock))):sk.name}`;
+    if(i===skinIdx) b.style.borderColor=sk.arc;
+    b.onclick=e=>{ e.stopPropagation(); if(locked) return; skinIdx=i; localStorage.pulseSkin=i; renderSkinRow(); };
+    row.appendChild(b); });
+}
+let dailyMode=false;
+function refreshDailyBtn(){ const b=$('dailyBtn'); if(!b)return;
+  b.className=dailyMode?'on':''; b.textContent=dailyMode?'DAILY RUN ✓ (2× lifetime)':'DAILY RUN';
+  $('mode').textContent=dailyMode?('DAILY · '+todayStr()+(dailyBestToday()?(' · BEST '+dailyBestToday()):'')):''; }
+refreshMeta(); renderSkinRow();
+setTimeout(()=>{ const b=$('dailyBtn'); if(b) b.onclick=e=>{ e.stopPropagation(); dailyMode=!dailyMode; refreshDailyBtn(); }; refreshDailyBtn(); },0);
+
+// ---- state ----
+const S={menu:0,play:1,dying:2,dead:3};
+let state=S.menu;
+let score=0,combo=0,hits=0,shields=2,comboPeak=0;
+let perfectStreak=0,sinceShield=0,jackpotHits=0,phase=0;
+let runChests=0,runPerfects=0,runComets=0;
+let ang=0,dir=1,speed=0,targetA=0,targetHalf=0.42,gold=false,pendingRev=false;
+let shake=0,ringPulse=0,flash=0,flashColor='255,255,255',reversalGlow=0;
+let dyingT=0,timeScale=1,slowmoT=0,slowmoS=1,hbT=0,tintHits=0,nextChest=0;
+let tickIdx=0;
+let particles=[],shocks=[],trail=[];
+const milestonesHit=new Set();
+// surprise events — at most one live at a time
+let eclipseUsed=false,eclipseActive=false;
+let cometUsed=false,cometActive=false;
+let overclockLeft=0,nextOverclock=0;
+let recordBroken=false,recordHits=0;
+let palindromesSeen=new Set();
+// idle personality
+let idleT=0,idleAnim=-1,idleAnimT=0,idleLast=-1;
+const TICKB=[0.28,0.20,0.13,0.07], TICKF=[470,600,760,950];
+
+function rand(a,b){ return a+Math.random()*(b-a); }
+function angleDiff(a,b){ let d=(a-b)%(Math.PI*2); if(d>Math.PI)d-=Math.PI*2; if(d<-Math.PI)d+=Math.PI*2; return d; }
+function curSpeed(){ return 2.1 + (6.2-2.1)*(1-Math.exp(-hits/55)) + Math.max(0,hits-60)*0.004; }
+function curHalf(){ return 0.13 + 0.29*Math.exp(-hits/120); }
+function effSpeed(){ return speed*(overclockLeft>0?1.6:1); }
+
+function newTarget(keepRev){
+  eclipseActive=false; cometActive=false;          // single-target events end here
+  const gap=Math.min(Math.PI*0.85, Math.max(0.9, effSpeed()*0.22));
+  let a; do { a=rng()*Math.PI*2; } while (Math.abs(angleDiff(a,ang))<gap);
+  targetA=a;
+  targetHalf=curHalf()*(overclockLeft>0?1.5:1)*(TINY?1.15:1); // wider windows on watch — a finger covers the screen
+  gold = tintHits>0 ? true : (rng()<0.14);
+  if(!keepRev) pendingRev = pendingRev ? false : (rng()<0.25);
+  // roll surprise events (one at a time, each honors its own gate)
+  if(overclockLeft===0){
+    if(!eclipseUsed && hits>=30 && rng()<0.008){
+      eclipseActive=true; eclipseUsed=true; gold=false;
+      popText($('milestone'),'ECLIPSE',1.5); beep(196,0.5,'sine',0.12);
+    } else if(!cometUsed && hits>=20 && rng()<0.007){
+      cometActive=true; cometUsed=true;
+      popText($('chest'),'☄ COMET · ×10',1.35); chime(659,880);
+    } else if(nextOverclock>0 && hits>=nextOverclock){
+      overclockLeft=3; nextOverclock=hits+35+Math.floor(rng()*10);
+      targetHalf=curHalf()*1.5*(TINY?1.15:1);
+      popText($('milestone'),'OVERCLOCK ×2',1.5);
+      beep(TICKF[1],0.06,'square',0.15); beep(TICKF[2],0.06,'square',0.15); beep(TICKF[3],0.09,'square',0.18);
+    }
+  }
+  tickIdx=0;
+}
+
+function start(){
+  score=0; combo=0; hits=0; comboPeak=0;
+  perfectStreak=0; sinceShield=0; jackpotHits=0; phase=0;
+  runChests=0; runPerfects=0; runComets=0;
+  eclipseUsed=false; eclipseActive=false; cometUsed=false; cometActive=false;
+  overclockLeft=0; recordBroken=false; recordHits=0; palindromesSeen.clear();
+  shields = ascRank(lifetime)>=2 ? 3 : 2;
+  ang=-Math.PI/2; dir=1; particles=[]; shocks=[]; trail=[];
+  dyingT=0; timeScale=1; slowmoT=0; hbT=0; tintHits=0; pendingRev=false;
+  milestonesHit.clear();
+  rng = dailyMode ? mulberry32(dailySeed()) : Math.random;
+  speed=curSpeed(); nextChest = 8 + Math.floor(rng()*8);
+  nextOverclock = 35 + Math.floor(rng()*10);
+  $('score').textContent=0; $('score').style.color=''; updShields();
+  newTarget(); state=S.play; $('msg').classList.add('hidden');
+}
+function reset(){ $('msg').classList.add('hidden'); start(); }
+function updShields(){ $('shields').textContent='🛡'.repeat(shields); }
+
+function bumpStreak(){
+  const today=todayStr();
+  if(localStorage.pulseLastDay!==today){
+    const y=new Date(); y.setDate(y.getDate()-1);
+    streak = (localStorage.pulseLastDay===fmtDate(y)) ? (+(localStorage.pulseStreak||0)+1) : 1;
+    localStorage.pulseStreak=streak; localStorage.pulseLastDay=today;
+  }
+}
+
+function burst(x,y,color,n){ if(TINY) n=Math.ceil(n/2);
+  for(let i=0;i<n;i++){ const a=rand(0,Math.PI*2),sp=rand(1.5,7);
+    particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,color,r:rand(2,5)}); } }
+function ringBurst(color){ const n=TINY?20:40;                    // supernova: shards along the whole ring
+  for(let i=0;i<n;i++){ const a=i/n*Math.PI*2, sp=rand(2,6);
+    particles.push({x:CX+Math.cos(a)*R,y:CY+Math.sin(a)*R,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1.2,color,r:rand(2,4)}); } }
+function shockwave(x,y,color){ shocks.push({x,y,r:R*0.12,a:0.9,color}); }
+function popText(el,txt,scale){ el.textContent=txt; el.style.transition='none'; el.style.opacity=1;
+  el.style.transform='scale('+scale+')';
+  requestAnimationFrame(()=>{ el.style.transition='all .6s ease-out'; el.style.opacity=0; el.style.transform='scale(1)'; }); }
+
+function checkMilestone(){ MILESTONES.forEach(m=>{
+  if(score>=m && !milestonesHit.has(m)){ milestonesHit.add(m);
+    popText($('milestone'), m+' · '+tierFor(m), 1.4);
+    burst(CX,CY, skin().arc, 30); flash=0.4; flashColor='90,200,255';
+    chime(1046,1318); } }); }
+
+function checkPalindrome(){
+  if(score<100 || palindromesSeen.has(score)) return;
+  const s=String(score);
+  const pal = s===[...s].reverse().join(''), rep = /^(\d)\1+$/.test(s);
+  if(pal||rep){ palindromesSeen.add(score);
+    popText($('chest'), score===404?'✦ SCORE NOT FOUND ✦':'✨ '+score+' ✨',1.2);
+    beep(660,0.07,'sine',0.16); beep(880,0.09,'sine',0.14); }
+}
+
+function openChest(){
+  const px=CX+Math.cos(ang)*R, py=CY+Math.sin(ang)*R;
+  const lucky = dailyMode && runChests===0;                       // daily's first chest is generous
+  const jp = lucky?0.15:0.05;
+  const roll=rng(); let txt;
+  if(roll<jp){ jackpotHits=10; txt=lucky?'✦ LUCKY DAY · JACKPOT ×2':'✦ JACKPOT · ×2 FOR 10 HITS'; }
+  else if(roll<0.40 && shields<3){ shields++; updShields(); txt='✦ CHEST +1 SHIELD 🛡'; }
+  else if(roll<0.70){ const b=15+combo; score+=b; txt='✦ CHEST +'+b+' PTS'; }
+  else { tintHits=6; txt='✦ CHEST · GOLD RUSH ×6'; }
+  runChests++;
+  $('score').textContent=score;
+  popText($('chest'), txt, 1.3);
+  burst(px,py, roll<jp?'#ffd23f':'#7CFC9E', roll<jp?32:22);
+  flash=0.35; flashColor=roll<jp?'255,210,63':'124,252,158'; chime(880,1174);
+  nextChest = hits + 8 + Math.floor(rng()*8);
+}
+
+function tap(){
+  if(state===S.menu){ start(); return; }
+  if(state===S.dead){ reset(); return; }
+  if(state===S.dying) return;
+  if(state!==S.play) return;
+
+  const d=Math.abs(angleDiff(ang,targetA));
+  const px=CX+Math.cos(ang)*R, py=CY+Math.sin(ang)*R;
+
+  if(d<=targetHalf){
+    const perfect = d <= Math.max(targetHalf*0.35, effSpeed()*0.025);
+    const wasEclipse=eclipseActive, wasComet=cometActive, wasRev=pendingRev;
+    hits++; combo++; comboPeak=Math.max(comboPeak,combo); sinceShield++;
+    if(tintHits>0) tintHits--;
+    let gain=(perfect?2:1)*(gold?3:1)*(1+Math.floor(combo/5)*0.5);
+    if(jackpotHits>0){ gain*=2; jackpotHits--; }
+    if(overclockLeft>0){ gain*=2; overclockLeft--; }
+    if(wasComet){ gain*=10; }
+    gain=Math.round(gain); score+=gain;
+    if(wasEclipse){ const bounty=25+combo; score+=bounty;         // the sun returns
+      popText($('chest'),'☀ +'+(gain+bounty),1.4);
+      flash=0.9; flashColor='255,255,240'; chime(523,659); beep(784,0.3,'sine',0.2); }
+    if(wasComet){ runComets++;
+      popText($('chest'),'☄ ×10 · +'+gain,1.4);
+      burst(px,py,'#ffd23f',40); flash=0.6; flashColor='140,220,255';
+      chime(523,784); beep(1046,0.25,'sine',0.2); }
+    $('score').textContent=score;
+    // record theater — break your best mid-run and play inside the record
+    if(!recordBroken && best>0 && score>best){
+      recordBroken=true; slowmoT=0.3; slowmoS=0.3;
+      popText($('milestone'),'RECORD ⚡',1.5);
+      burst(CX+Math.cos(ang+Math.PI)*R, CY+Math.sin(ang+Math.PI)*R, '#ffd23f', 26); // the ghost dissolves
+      flash=0.5; flashColor='255,210,63'; chime(1318,1568);
+      $('score').style.color='#ffd23f';
+    }
+    if(recordBroken) recordHits++;
+    speed=curSpeed();
+    if(pendingRev){ dir*=-1; reversalGlow=1; beep(300,0.12,'sine',0.18); }
+    burst(px,py, gold?'#ffd23f':(perfect?skin().arc:'#7CFC9E'), gold?26:(perfect?16:10));
+    shake=perfect?9:5; ringPulse=1; if(!wasEclipse&&!wasComet){ flash=gold?0.5:0; flashColor='255,255,255'; }
+    if(perfect){
+      perfectStreak++; runPerfects++;
+      if(wasRev){ revPerfects++; localStorage.pulseRevPerfects=revPerfects;    // the hidden road to Phantom
+        if(revPerfects>=3 && localStorage.pulsePhantom!=='1'){
+          localStorage.pulsePhantom='1';
+          popText($('milestone'),'??? → PHANTOM FOUND',1.4); chime(1046,1568); renderSkinRow(); } }
+      if(perfectStreak>=8){                                        // FLAWLESS supernova
+        perfectStreak=0;
+        slowmoT=0.22; slowmoS=0.04;
+        popText($('milestone'),'FLAWLESS',1.6);
+        ringBurst(skin().arc); shockwave(px,py,skin().arc);
+        flash=0.5; flashColor='255,255,255'; chime(1568,2093);
+      } else {
+        shockwave(px,py,skin().arc); slowmoT=0.07; slowmoS=0.05;
+        chime(784+perfectStreak*40, 1046+perfectStreak*40);
+      }
+    } else { perfectStreak=0; beep((gold?880:520)+combo*6,0.09,'triangle',0.28); }
+    if(combo>0&&combo%5===0){ popText($('combo'),'COMBO ×'+(1+Math.floor(combo/5)*0.5),1.25); beep(990,0.14,'sine',0.2); }
+    if(sinceShield>=25 && shields<3){ shields++; sinceShield=0; updShields(); beep(1200,0.12,'sine',0.18); }
+    if(hits>=nextChest) openChest();
+    const ph=Math.floor(hits/50);
+    if(ph!==phase){ phase=ph; popText($('milestone'),'PHASE '+(phase+1),1.5);
+      flash=0.45; flashColor=hexToRgb(PHASE_COLS[phase%PHASE_COLS.length]); chime(1174,1568); }
+    checkMilestone(); checkPalindrome();
+    newTarget();
+  } else if(d<=targetHalf*1.4 && shields>0){
+    shields--; updShields(); combo=Math.floor(combo/2); perfectStreak=0;
+    burst(px,py,'#5ac8ff',10); shake=6; ringPulse=1; flash=0.22; flashColor='90,200,255';
+    slowmoT=0.35; slowmoS=0.35; beep(200,0.18,'square',0.24); beep(150,0.12,'square',0.16);
+    newTarget(true);
+  } else {
+    die(px,py);
+  }
+}
+
+function die(px,py){ state=S.dying; dyingT=0; shake=18; flash=0.7; flashColor='255,77,109';
+  burst(px||CX,py||CY,'#ff4d6d',34); beep(160,0.35,'sawtooth',0.3); }
+
+let unlockedBefore=new Set(); let justUnlocked=[];
+function snapshotUnlocks(){ unlockedBefore=new Set(SKINS.map((s,i)=>unlocked(i)?i:-1).filter(i=>i>0)); }
+snapshotUnlocks();
+
+function makeShareCard(){
+  const c=document.createElement('canvas'); c.width=600; c.height=315;
+  const g=c.getContext('2d'); const sk=skin();
+  const grd=g.createRadialGradient(300,130,10,300,130,340);
+  grd.addColorStop(0,'#141426'); grd.addColorStop(1,'#0a0a12'); g.fillStyle=grd; g.fillRect(0,0,600,315);
+  g.strokeStyle=sk.arc; g.lineWidth=8; g.shadowColor=sk.arc; g.shadowBlur=30;
+  g.beginPath(); g.arc(300,150,95,-0.5,1.7); g.stroke(); g.shadowBlur=0;
+  g.fillStyle=sk.dot; g.beginPath(); g.arc(300+Math.cos(1.7)*95,150+Math.sin(1.7)*95,10,0,7); g.fill();
+  g.textAlign='center'; g.fillStyle='#fff';
+  g.font='900 34px Segoe UI,sans-serif'; g.fillText('P U L S E',300,54);
+  g.font='900 90px Segoe UI,sans-serif'; g.fillStyle=sk.arc; g.fillText(score,300,185);
+  g.font='600 20px Segoe UI,sans-serif'; g.fillStyle='#fff';
+  g.fillText(tierFor(score)+'  ·  combo ×'+(1+Math.floor(comboPeak/5)*0.5).toFixed(1),300,232);
+  const asc=ascRank(lifetime);
+  g.font='500 15px Segoe UI,sans-serif'; g.fillStyle='rgba(255,210,63,.85)';
+  g.fillText((asc>0?('ASCENSION '+asc+'  ·  '):'')+'Day '+streak+' 🔥'+(statComets?('  ·  ☄ '+statComets):''),300,262);
+  g.font='500 14px Segoe UI,sans-serif'; g.fillStyle='rgba(255,255,255,.5)';
+  g.fillText('can you beat it?',300,290);
+  return c;
+}
+function shareCard(btn){
+  const c=makeShareCard();
+  c.toBlob(blob=>{
+    if(navigator.clipboard&&window.ClipboardItem){
+      navigator.clipboard.write([new ClipboardItem({'image/png':blob})])
+        .then(()=>{ btn.textContent='CARD COPIED ✓'; })
+        .catch(()=>download(blob,btn));
+    } else download(blob,btn);
+  });
+  function download(blob,btn){ const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download='pulse-'+score+'.png'; a.click(); btn.textContent='CARD SAVED ✓'; }
+}
+
+function finalizeDeath(){
+  state=S.dead;
+  const isBest=score>best;
+  if(score>=10) bumpStreak();
+  const ascBefore=ascRank(lifetime);
+  lifetime += score*(dailyMode?2:1);
+  localStorage.pulseLifetime=lifetime;
+  const ascNow=ascRank(lifetime);
+  statChests+=runChests; statPerfects+=runPerfects; statComets+=runComets;
+  localStorage.pulseChests=statChests; localStorage.pulsePerfects=statPerfects; localStorage.pulseComets=statComets;
+  if(isBest){ best=score; localStorage.pulseBest=best; }
+  let dailyLine='';
+  if(dailyMode){ const dk='pulseDaily_'+todayStr();
+    if(score>+(localStorage[dk]||0)) localStorage[dk]=score;
+    dailyLine=' &nbsp;·&nbsp; DAILY BEST '+localStorage[dk]; }
+  justUnlocked=SKINS.filter((s,i)=>i>0&&unlocked(i)&&!unlockedBefore.has(i)).map(s=>s.name);
+  snapshotUnlocks();
+  let head,sub;
+  if(isBest&&score>0){ head='NEW BEST!'; sub='You beat your record'; }
+  else if(best>0&&score>=best*0.8&&score<best){ head='SO CLOSE'; sub=(best-score)+' from your BEST'; }
+  else { head='GAME OVER'; sub='Best '+best; }
+  const mult=(1+Math.floor(comboPeak/5)*0.5).toFixed(1);
+  const m=$('msg'); m.classList.remove('hidden');
+  m.innerHTML=
+    `<h1 class="go-head">${head}</h1>`+
+    `<p class="big go-score">${score}</p>`+
+    `<p style="opacity:.6">${sub} &nbsp;·&nbsp; ${tierFor(score)} &nbsp;·&nbsp; combo peaked ×${mult}${dailyLine}</p>`+
+    (recordBroken?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;opacity:.85">⚡ held the record zone for ${recordHits} hits</p>`:'')+
+    (runComets?`<p style="color:#8cdcff;-webkit-text-fill-color:#8cdcff;opacity:.85">☄ caught a comet</p>`:'')+
+    (justUnlocked.length?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;margin-top:12px">✦ SKIN UNLOCKED: ${justUnlocked.join(', ')}</p>`:'')+
+    (ascNow>ascBefore?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;margin-top:10px">✦ ASCENSION ${ascNow} REACHED${ascPerkHint(ascNow)}</p>`:'')+
+    `<p style="opacity:.5;font-size:.9em;margin-top:12px">🔥 Day ${streak} &nbsp;·&nbsp; Lifetime ${lifetime} &nbsp;·&nbsp; 📦 ${statChests} &nbsp;·&nbsp; 🎯 ${statPerfects}${statComets?' &nbsp;·&nbsp; ☄ '+statComets:''}</p>`+
+    `<div class="row" data-ui>`+
+      `<button data-ui id="shareBtn">SHARE CARD</button>`+
+      `<button data-ui id="copyBtn">COPY TEXT</button>`+
+      `<button data-ui id="againBtn">PLAY AGAIN ▸</button>`+
+    `</div>`+
+    `<div class="row" data-ui><button data-ui id="dailyBtn">DAILY RUN</button></div>`+
+    `<div class="row" id="skinrow" data-ui></div>`+
+    `<p style="opacity:.35;font-size:.85em;margin-top:16px">tap anywhere to retry</p>`;
+  renderSkinRow();
+  const db=$('dailyBtn'); db.onclick=e=>{ e.stopPropagation(); dailyMode=!dailyMode; refreshDailyBtn(); };
+  refreshDailyBtn();
+  $('againBtn').onclick=e=>{ e.stopPropagation(); reset(); };
+  $('shareBtn').onclick=e=>{ e.stopPropagation(); shareCard($('shareBtn')); };
+  $('copyBtn').onclick=e=>{ e.stopPropagation();
+    const txt=`PULSE — ${score} pts · ${tierFor(score)} · combo ×${mult} 🎯 can you beat it?`;
+    try{ navigator.clipboard.writeText(txt); $('copyBtn').textContent='COPIED ✓'; }catch(_){ $('copyBtn').textContent=txt; } };
+}
+
+// ---- loop ----
+let last=performance.now();
+function frame(now){
+  let rdt=Math.min(0.05,(now-last)/1000); last=now;
+
+  if(state===S.dying){ dyingT+=rdt;
+    timeScale = dyingT<0.12 ? 0.08 : Math.min(1,0.08+(dyingT-0.12)*2);
+    if(dyingT>0.55) finalizeDeath();
+  } else if(slowmoT>0){ slowmoT-=rdt; timeScale=slowmoS; }
+  else timeScale=1;
+  const dt=rdt*timeScale;
+
+  if(state===S.play){
+    ang+=dir*effSpeed()*dt; if(ang>Math.PI*2)ang-=Math.PI*2; if(ang<0)ang+=Math.PI*2;
+    const d=Math.abs(angleDiff(ang,targetA));
+    const tti=d/effSpeed();
+    while(tickIdx<TICKB.length && tti<TICKB[tickIdx]){
+      beep(TICKF[tickIdx],0.035,'sine',(eclipseActive?0.02:0.06)+tickIdx*0.012); tickIdx++; } // whispered in the dark
+    if(tti>0.4) tickIdx=0;
+    if(!eclipseActive){ hbT+=rdt; const beatT=Math.max(0.30,0.85-(speed-2.1)*0.08);
+      if(hbT>=beatT){ hbT=0; beep(120,0.09,'sine',0.06); beep(96,0.12,'sine',0.05); } } // the heartbeat stops during an eclipse
+    if(ascRank(lifetime)>=3 || cometActive){
+      trail.push({x:CX+Math.cos(ang)*R,y:CY+Math.sin(ang)*R,a:cometActive?0.8:0.5});
+      if(trail.length>(cometActive?22:14)) trail.shift();
+    }
+  }
+  // idle personality — the dot fidgets while you decide
+  if(state===S.menu||state===S.dead){
+    idleT+=rdt;
+    if(idleAnim<0 && idleT>8){ idleT=0;
+      let v; do{ v=Math.floor(Math.random()*3); }while(v===idleLast);
+      idleAnim=v; idleLast=v; idleAnimT=0; }
+    if(idleAnim>=0){ idleAnimT+=rdt; if(idleAnimT>0.9) idleAnim=-1; }
+  } else { idleT=0; idleAnim=-1; }
+
+  trail.forEach(t=>{ t.a-=rdt*1.4; }); trail=trail.filter(t=>t.a>0);
+  shake*=0.86; ringPulse*=0.90; flash*=0.88; reversalGlow*=0.90;
+  particles.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=0.15; p.vx*=0.97; p.life-=rdt*1.6; });
+  particles=particles.filter(p=>p.life>0);
+  shocks.forEach(s=>{ s.r+=640*rdt; s.a-=rdt*1.8; });
+  shocks=shocks.filter(s=>s.a>0);
+
+  ctx.clearRect(0,0,W,H);
+  const sx=(Math.random()-0.5)*shake, sy=(Math.random()-0.5)*shake;
+  ctx.save(); ctx.translate(sx,sy);
+
+  if(state===S.play && phase>0 && !eclipseActive){
+    ctx.fillStyle='rgba('+hexToRgb(PHASE_COLS[phase%PHASE_COLS.length])+',0.05)';
+    ctx.fillRect(-sx-50,-sy-50,W+100,H+100);
+  }
+  if(state===S.play && combo>2 && !TINY && !eclipseActive){
+    const vi=Math.min(0.42,combo*0.018), sk=skin();
+    const vg=ctx.createRadialGradient(CX,CY,R*0.6,CX,CY,Math.max(W,H)*0.7);
+    vg.addColorStop(0,'rgba(0,0,0,0)');
+    vg.addColorStop(1,'rgba('+hexToRgb(sk.arc)+','+vi+')');
+    ctx.fillStyle=vg; ctx.fillRect(-sx-50,-sy-50,W+100,H+100);
+  }
+  if(state===S.play && eclipseActive){                             // the world goes dark
+    ctx.fillStyle='rgba(2,2,8,0.62)'; ctx.fillRect(-sx-50,-sy-50,W+100,H+100);
+  }
+
+  ctx.lineWidth=6;
+  const warn = state===S.play && pendingRev && !eclipseActive;
+  ctx.strokeStyle='rgba('+(reversalGlow>0.05||warn?'255,210,63':'255,255,255')+','+(0.10+ringPulse*0.25+reversalGlow*0.4+(warn?0.18:0))+')';
+  ctx.beginPath(); ctx.arc(CX,CY,R+ringPulse*8,0,Math.PI*2); ctx.stroke();
+
+  if(state===S.play||state===S.dying){
+    const sk=skin();
+    const d=Math.abs(angleDiff(ang,targetA)), p=Math.max(0,1-d/0.6);
+    if(state===S.play && shields>0 && !eclipseActive){ ctx.lineWidth=18; ctx.strokeStyle='rgba(90,200,255,.09)';
+      ctx.beginPath(); ctx.arc(CX,CY,R,targetA-targetHalf*1.4,targetA+targetHalf*1.4); ctx.stroke(); }
+    // target arc — silver sliver during an eclipse
+    if(eclipseActive){ ctx.lineWidth=5; ctx.strokeStyle='#dfe8ff'; ctx.shadowColor='#dfe8ff'; ctx.shadowBlur=blur(16); }
+    else { ctx.lineWidth=14+p*8; ctx.strokeStyle=gold?'#ffd23f':sk.arc; ctx.shadowColor=ctx.strokeStyle; ctx.shadowBlur=blur(22+p*22); }
+    ctx.lineCap='round';
+    ctx.beginPath(); ctx.arc(CX,CY,R,targetA-targetHalf,targetA+targetHalf); ctx.stroke();
+    ctx.shadowBlur=0; ctx.lineCap='butt';
+    // near-milestone drama — the next milestone ghosts at center when you're within 3
+    if(state===S.play){
+      const nm=MILESTONES.find(m=>!milestonesHit.has(m)&&m>score&&m-score<=3);
+      if(nm){ ctx.font='900 '+Math.round(R*0.55)+'px Segoe UI,sans-serif'; ctx.textAlign='center';
+        ctx.fillStyle='rgba(255,255,255,'+(0.06+0.05*Math.sin(now/180))+')';
+        ctx.fillText(nm,CX,CY+R*0.18); }
+    }
+    trail.forEach(t=>{ ctx.globalAlpha=Math.max(0,t.a); ctx.fillStyle=cometActive?'#8cdcff':sk.dot;
+      ctx.beginPath(); ctx.arc(t.x,t.y,cometActive?5:4,0,Math.PI*2); ctx.fill(); });
+    ctx.globalAlpha=1;
+    // ghost of your best — appears when the record is in reach, dissolves when you take it
+    if(state===S.play && best>0 && !recordBroken && score>=best-5 && score<=best){
+      const gx=CX+Math.cos(ang+Math.PI)*R, gy=CY+Math.sin(ang+Math.PI)*R;
+      ctx.globalAlpha=0.28; ctx.fillStyle='#ffd23f';
+      ctx.beginPath(); ctx.arc(gx,gy,7,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
+    }
+    const dx=CX+Math.cos(ang)*R, dy=CY+Math.sin(ang)*R;
+    ctx.fillStyle=cometActive?'#8cdcff':sk.dot; ctx.shadowColor=ctx.fillStyle; ctx.shadowBlur=blur(14+p*26);
+    ctx.beginPath(); ctx.arc(dx,dy,(cometActive?12:9)+p*6,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+  }
+
+  // idle dot on menu / death screens
+  if(state===S.menu||state===S.dead){
+    const sk=skin(); let ix=CX, iy=CY-R, rx=9, ry=9;
+    if(idleAnim===0){ const w=Math.sin(idleAnimT*14)*0.25*Math.exp(-idleAnimT*2);
+      rx=9*(1+w); ry=9*(1-w); }                                   // wobble
+    else if(idleAnim===1){ iy-=Math.abs(Math.sin(idleAnimT*7))*10*Math.exp(-idleAnimT*1.5); } // hop
+    ctx.fillStyle=sk.dot; ctx.shadowColor=sk.dot; ctx.shadowBlur=blur(12);
+    ctx.beginPath(); ctx.ellipse(ix,iy,rx,ry,0,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+    if(idleAnim===2 && idleAnimT<0.45){                            // wink — a crescent
+      ctx.fillStyle='#0a0a12'; ctx.beginPath(); ctx.arc(ix+3,iy-2,7,0,Math.PI*2); ctx.fill(); }
+  }
+
+  shocks.forEach(s=>{ ctx.globalAlpha=Math.max(0,s.a); ctx.strokeStyle=s.color; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.stroke(); });
+  ctx.globalAlpha=1;
+  particles.forEach(p=>{ ctx.globalAlpha=Math.max(0,Math.min(1,p.life)); ctx.fillStyle=p.color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); });
+  ctx.globalAlpha=1; ctx.restore();
+
+  if(flash>0.01){ ctx.fillStyle='rgba('+flashColor+','+flash*0.5+')'; ctx.fillRect(0,0,W,H); }
+  requestAnimationFrame(frame);
+}
+function hexToRgb(h){ const n=parseInt(h.slice(1),16); return (n>>16&255)+','+(n>>8&255)+','+(n&255); }
+requestAnimationFrame(frame);
+
+// ---- input ----
+function onDown(e){ if(e.target.closest&&e.target.closest('[data-ui]')) return;
+  e.preventDefault(); if(AC&&AC.state==='suspended')AC.resume(); tap(); }
+window.addEventListener('mousedown',onDown);
+window.addEventListener('touchstart',onDown,{passive:false});
+window.addEventListener('keydown',e=>{ if(e.code==='Space'||e.code==='Enter'){ e.preventDefault(); if(AC&&AC.state==='suspended')AC.resume(); tap(); }});
+</script>
