@@ -23,6 +23,29 @@ dependencies, no server — open `index.html` in any browser and play.
 | Gold arc (14%) | 3× |
 | Mystery chest (every 8–15 hits) | +points, +shield, GOLD RUSH ×6, or a 5% JACKPOT (×2 for 10 hits) |
 | Phase shift (every 50 hits) | Palette rotates — long runs travel somewhere |
+| OVERCLOCK (every ~35–45 hits) | ×1.6 speed, ×1.5 arc, ×2 pay for 3 targets |
+| ☄ COMET (rare, once per run) | The dot streaks for one lap — that hit pays ×10 |
+| ECLIPSE (very rare, once per run) | The world goes dark and silent; one silver target, big bounty |
+
+## Surprise & delight
+
+- **Record theater** — near your best, a gold ghost dot appears; break the record
+  mid-run and it dissolves, time dilates, and your score runs gold to the end.
+- **FLAWLESS** — 8 consecutive perfects shatter the ring in a supernova.
+- **Palindrome winks** — palindrome/repdigit scores sparkle (404 has an opinion).
+- **Near-milestone drama** — within 3 points of a milestone, its number ghosts
+  at ring center.
+- **A secret skin** exists. Its trigger is not documented here.
+- The dot fidgets if you leave it waiting.
+
+## Apple Watch
+
+The page declares `disabled-adaptations: watch`, so watchOS Safari renders it
+at native size instead of a shrunken desktop view. On watch-class screens
+(≤290 px) the layout compacts, effects slim down for the GPU, and target arcs
+widen ~15% because a finger covers half the display. Open the game URL from a
+Message/Mail link on the watch to play. (watchOS may not support WebAudio —
+the game degrades silently to visual-only feedback.)
 
 ## Progression
 
