@@ -29,14 +29,23 @@ dependencies, no server — open `index.html` in any browser and play.
 
 ## Surprise & delight
 
+- **Quests** — a rotating micro-goal always on the HUD (hit 3 golds, 15 hits
+  without a graze, combo 12…), each paying a bonus; daily runs share the same
+  quest sequence for everyone.
+- **Revenge** — your last run's score is a rival; pass it for a "⚔ REVENGED" bonus.
+- **Melodic combos** — each hit plays the next note of a rising pentatonic
+  scale, so a long combo literally composes a tune.
+- **Epitaphs** — the death screen has opinions: "Greed is a hell of a drug.",
+  "Overclocked past the redline.", "One tap short. Ouch."
+- **Haptics** — hits, perfects, grazes, and deaths vibrate where supported.
 - **Record theater** — near your best, a gold ghost dot appears; break the record
   mid-run and it dissolves, time dilates, and your score runs gold to the end.
 - **FLAWLESS** — 8 consecutive perfects shatter the ring in a supernova.
 - **Palindrome winks** — palindrome/repdigit scores sparkle (404 has an opinion).
 - **Near-milestone drama** — within 3 points of a milestone, its number ghosts
-  at ring center.
+  at ring center, and a NEXT-goal chip always names your next target.
 - **A secret skin** exists. Its trigger is not documented here.
-- The dot fidgets if you leave it waiting.
+- The dot blinks mid-run and fidgets if you leave it waiting.
 
 ## Apple Watch
 
