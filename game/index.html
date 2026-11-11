@@ -495,8 +495,16 @@ function shareCard(btn){
         .catch(()=>download(blob,btn));
     } else download(blob,btn);
   });
-  function download(blob,btn){ const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob); a.download='pulse-'+score+'.png'; a.click(); btn.textContent='CARD SAVED ✓'; }
+  function download(blob,btn){
+    (async()=>{
+      try{
+        const dl = (window.claude&&window.claude.use) ? await window.claude.use('downloads') : null;
+        if(dl){ await dl.save({filename:'pulse-'+score+'.png', data:blob}); btn.textContent='CARD SAVED ✓'; return; }
+      }catch(e){ if(e&&e.code==='declined'){ return; } }       // viewer said no — not an error
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob); a.download='pulse-'+score+'.png'; a.click(); btn.textContent='CARD SAVED ✓';
+    })();
+  }
 }
 
 function finalizeDeath(){
