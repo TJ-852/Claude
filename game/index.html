@@ -14,6 +14,7 @@
   .sub{font-size:13px;opacity:.55;letter-spacing:2px;margin-top:4px;text-transform:uppercase}
   #shields{margin-top:8px;font-size:15px;letter-spacing:3px;color:#5ac8ff;height:16px}
   #quest{margin-top:7px;font-size:12px;letter-spacing:1px;color:#9fd8ff;opacity:.85;max-width:46vw}
+  #zen{margin-top:4px;font-size:12px;letter-spacing:1px;color:#9fe8c8;opacity:.85;height:14px}
   .best{text-align:right;font-size:15px;opacity:.6;letter-spacing:1px}
   #tierhud{text-align:right;font-size:12px;letter-spacing:2px;opacity:.5;margin-top:6px;text-transform:uppercase}
   #nextgoal{text-align:right;font-size:11px;letter-spacing:1px;opacity:.45;margin-top:4px}
@@ -54,6 +55,7 @@
     .score{font-size:24px}.sub{font-size:8px;letter-spacing:1px;margin-top:2px}
     #shields{font-size:10px;margin-top:3px;letter-spacing:1px}
     #quest{font-size:8px;max-width:58vw;margin-top:3px}
+    #zen{font-size:8px;margin-top:2px;height:9px}
     #nextgoal{font-size:7px;margin-top:2px}
     .best{font-size:9px}#tierhud{font-size:7px;margin-top:2px}
     #mode{font-size:7px;top:4px;letter-spacing:1px}
@@ -75,7 +77,7 @@
 <div id="wrap"><canvas id="c"></canvas></div>
 <div id="mode"></div>
 <div id="hud">
-  <div><div class="score" id="score">0</div><div class="sub">Score</div><div id="shields"></div><div id="quest"></div></div>
+  <div><div class="score" id="score">0</div><div class="sub">Score</div><div id="shields"></div><div id="quest"></div><div id="zen"></div></div>
   <div class="best">BEST<br><span id="best">0</span><div id="tierhud"></div><div id="nextgoal"></div></div>
 </div>
 <div id="combo"></div>
@@ -104,11 +106,11 @@ function blur(v){ return TINY?v*0.35:v; }
 
 // ---- audio / haptics ----
 let AC;
-function beep(freq,dur=0.08,type='sine',vol=0.25){
+function beep(freq,dur=0.08,type='sine',vol=0.25,delay=0){
   try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)();
     const o=AC.createOscillator(), g=AC.createGain();
     o.type=type; o.frequency.value=freq; o.connect(g); g.connect(AC.destination);
-    const t=AC.currentTime; g.gain.setValueAtTime(vol,t);
+    const t=AC.currentTime+delay; g.gain.setValueAtTime(vol,t);
     g.gain.exponentialRampToValueAtTime(0.001,t+dur); o.start(t); o.stop(t+dur);
   }catch(e){}
 }
@@ -150,6 +152,7 @@ let statPerfects=+(localStorage.pulsePerfects||0);
 let statComets=+(localStorage.pulseComets||0);
 let statSplits=+(localStorage.pulseSplits||0);
 let statSplitBest=+(localStorage.pulseSplitBest||0);
+let statZenBest=+(localStorage.pulseZenBest||0);
 let revPerfects=+(localStorage.pulseRevPerfects||0); // now counts perfects landed while split
 let questsDone=+(localStorage.pulseQuests||0);
 let lastRunScore=+(localStorage.pulseLast||0);
@@ -173,7 +176,7 @@ function refreshMeta(){
     (asc>0?` &nbsp;·&nbsp; <b style="color:#ffd23f">Ascension ${asc}</b>`:'') +
     (next?`<br><span style="opacity:.55;font-size:.92em">${next-lifetime} lifetime pts to Ascension ${asc+1}${ascPerkHint(asc+1)}</span>`:'<br><span style="opacity:.55;font-size:.92em">Max ascension reached</span>') +
     (dailyBestToday()?`<br><span style="opacity:.55;font-size:.92em">Today's daily best: <b>${dailyBestToday()}</b></span>`:'') +
-    `<br><span style="opacity:.45;font-size:.92em">📦 ${statChests} · 🎯 ${statPerfects} · ◆ ${questsDone} · ⧉ ${statSplits}${statComets?' · ☄ '+statComets:''}</span>`;
+    `<br><span style="opacity:.45;font-size:.92em">📦 ${statChests} · 🎯 ${statPerfects} · ◆ ${questsDone} · ⧉ ${statSplits}${statSplitBest?' (best run '+statSplitBest+')':''}${statZenBest>=3?' · ☯ '+statZenBest:''}${statComets?' · ☄ '+statComets:''}${localStorage.pulsePhantom==='1'?' · 👻 '+revPerfects:''}</span>`;
 }
 function ascPerkHint(r){ return r===1?' (skin)':r===2?' (+1 start shield)':r===3?' (dot trail)':''; }
 function renderSkinRow(){
@@ -213,6 +216,7 @@ let palindromesSeen=new Set();
 let quest=null,qrng=Math.random,runQuests=0,revenged=false;
 let blinkT=0,blinkNext=7,blinkOn=0,deathInfo=null,shrinkHits=0;
 let lastActor=0,splitRun=0,runSplitBest=0,zen=0;
+let judgedIdx=0,lastRev=false,runZenBest=0,zenRecordShown=false,splitRecordShown=false;
 const NOTES=[262,294,330,392,440,523,587,659,784,880];
 const TICKB=[0.28,0.20,0.13,0.07], TICKF=[470,600,760,950];
 
@@ -229,16 +233,18 @@ function nearestDot(){ let bi=0,bd=1e9;
 function newTarget(){
   eclipseActive=false; cometActive=false;
   const gap=Math.min(Math.PI*0.85, Math.max(0.9, effSpeed()*0.22));
-  // targets spawn AHEAD of the acting dot's heading — your direction chooses where the world unfolds
+  // targets spawn AHEAD of the acting dot's heading; a REVERSE routes closer-but-tighter
   const ref=dots[Math.min(lastActor,dots.length-1)]||dots[0];
-  let a=ref.ang+ref.dir*(gap+rng()*1.7);
+  const clear=gap*(lastRev?0.5:0.8);
+  const roll=()=>ref.ang+ref.dir*( lastRev ? (gap*0.6+rng()*1.0) : (gap+rng()*1.7) );
+  let a=roll();
   for(let t=0;t<40;t++){
-    if(dots.every(dt=>Math.abs(angleDiff(a,dt.ang))>=gap*0.8)) break;
-    a=ref.ang+ref.dir*(gap+rng()*1.7);
+    if(dots.every(dt=>Math.abs(angleDiff(a,dt.ang))>=clear)) break;
+    a=roll();
   }
   a=((a%(Math.PI*2))+Math.PI*2)%(Math.PI*2);
   targetA=a;
-  targetHalf=curHalf()*(overclockLeft>0?1.5:1)*(TINY?1.15:1)*(shrinkHits>0?0.7:1)*(dots.length>1?0.85:1);
+  targetHalf=curHalf()*(overclockLeft>0?1.5:1)*(TINY?1.15:1)*(shrinkHits>0?0.7:1)*(dots.length>1?0.85:1)*(lastRev?0.9:1);
   if(shrinkHits>0) shrinkHits--;
   gold = tintHits>0 ? true : (rng()<0.14);
   if(overclockLeft===0){
@@ -266,6 +272,7 @@ const QUEST_POOL=[
   {type:'rev',need:3,reward:40,label:'Reverse 3 times'},
   {type:'split',need:1,reward:60,label:'Split the dot'},
   {type:'splithits',need:8,reward:70,label:'Survive 8 hits split'},
+  {type:'splitperfect',need:2,reward:80,label:'2 perfects while split'},
   {type:'clean',need:15,reward:50,label:'15 hits, no graze'},
 ];
 function newQuest(){
@@ -284,6 +291,8 @@ function checkQuest(){
 function updNextGoal(){ const el=$('nextgoal'); if(!el) return;
   const nm=MILESTONES.find(m=>m>score);
   el.textContent = nm ? ('NEXT '+nm+' · −'+(nm-score)) : ''; }
+function updZen(){ const el=$('zen'); if(!el) return;
+  el.textContent = zen>=3 ? ('☯ ZEN ×'+zen) : (zen>0 ? ('☯ '+zen+'/3') : ''); }
 
 function start(){
   score=0; combo=0; hits=0; comboPeak=0;
@@ -301,6 +310,7 @@ function start(){
   nextOverclock = 35 + Math.floor(rng()*10);
   revenged=false; blinkT=0; blinkOn=0; deathInfo=null; runQuests=0; shrinkHits=0;
   lastActor=0; splitRun=0; runSplitBest=0; zen=0; vtrail=[];
+  judgedIdx=0; lastRev=false; runZenBest=0; zenRecordShown=false; splitRecordShown=false; updZen();
   try{ $('shields').style.opacity=1; }catch(e){}
   newQuest(); updNextGoal();
   $('score').textContent=0; $('score').style.color=''; updShields();
@@ -367,7 +377,7 @@ function openChest(){
 function loseDot(i,px,py){
   // with two dots, a bad tap costs a dot, not the run
   dots.splice(i,1);
-  lastActor=0; splitRun=0; zen=0;
+  lastActor=0; splitRun=0; zen=0; judgedIdx=0; lastRev=false; updZen();
   try{ $('shields').style.opacity=1; }catch(e){}
   combo=Math.floor(combo/2); perfectStreak=0;
   popText($('combo'),'⧉ DOT LOST',1.2);
@@ -383,14 +393,15 @@ function tap(){
   if(state===S.dying) return;
   if(state!==S.play) return;
 
-  const nd=nearestDot(), dot=dots[nd.i], d=nd.d;
-  lastActor=nd.i;
+  const ji = dots.length>1 ? Math.min(judgedIdx,dots.length-1) : 0;
+  const dot=dots[ji], d=Math.abs(angleDiff(dot.ang,targetA));
+  lastActor=ji;
   const px=CX+Math.cos(dot.ang)*R, py=CY+Math.sin(dot.ang)*R;
 
   if(d<=targetHalf){
     const frac=d/targetHalf;
-    // perfect zone: time-floored for fairness, CAPPED at half the arc so speed can never make every tap perfect
-    const perfect = d <= Math.min(targetHalf*0.5, Math.max(targetHalf*0.3, effSpeed()*0.02));
+    // perfect zone: floor 0.2×arc, cap 0.35×arc — tight enough that zen taps aren't automatic perfects
+    const perfect = d <= Math.min(targetHalf*0.35, Math.max(targetHalf*0.2, effSpeed()*0.02));
     const wasEclipse=eclipseActive, wasComet=cometActive;
     // the palindrome rule: before the midpoint bounces you back; past it carries you on
     const beforeMid = angleDiff(targetA,dot.ang)*dot.dir > 0;
@@ -400,7 +411,7 @@ function tap(){
       dots=[{ang:dot.ang,dir:1},{ang:dot.ang,dir:-1}];
       splitRun=0; try{ $('shields').style.opacity=.25; }catch(e){}
     } else if(!perfect && beforeMid){ dot.dir*=-1; didReverse=true; reversalGlow=1;
-      beep(494,0.05,'sine',0.13); beep(349,0.1,'sine',0.13); }   // falling two-note: you turned around
+      beep(494,0.05,'sine',0.13); beep(349,0.1,'sine',0.13,0.07); }  // a TRUE falling two-note: you turned around
     hits++; combo++; comboPeak=Math.max(comboPeak,combo); sinceShield++;
     if(tintHits>0) tintHits--;
     let gain=(perfect?2:1)*(gold?3:1)*(1+Math.floor(combo/5)*0.5);
@@ -427,6 +438,7 @@ function tap(){
       else if(quest.type==='rev'&&didReverse) quest.got++;
       else if(quest.type==='split'&&didSplit) quest.got++;
       else if(quest.type==='splithits'&&dots.length>1&&!didSplit) quest.got++;
+      else if(quest.type==='splitperfect'&&perfect&&dots.length>1&&!didSplit) quest.got++;
       else if(quest.type==='clean') quest.got=hits-quest.start;
       updQuestHUD(); checkQuest(); }
     updNextGoal();
@@ -440,11 +452,16 @@ function tap(){
     if(recordBroken) recordHits++;
     // split streak + zen lane
     if(dots.length>1 && !didSplit){ splitRun++; runSplitBest=Math.max(runSplitBest,splitRun);
-      if(splitRun%5===0){ popText($('combo'),'⧉ SURVIVED ×'+splitRun,1.2); chime(880,1046); } }
-    if(frac<0.25){ zen++;
+      if(splitRun%5===0){ popText($('combo'),'⧉ SURVIVED ×'+splitRun,1.2); chime(880,1046); }
+      if(!splitRecordShown && runSplitBest>statSplitBest && runSplitBest>=5){ splitRecordShown=true;
+        popText($('combo'),'⧉ BEST RUN!',1.2); chime(988,1175); } }
+    if(frac<0.25){ zen++; runZenBest=Math.max(runZenBest,zen);
       if(zen===3){ popText($('combo'),'☯ ZEN · +5/hit',1.15); chime(523,659); }
-      if(zen>=3){ score+=5; $('score').textContent=score; }
+      if(zen>=3){ score+=5; $('score').textContent=score; beep(1318,0.03,'sine',0.05); }
+      if(!zenRecordShown && statZenBest>=3 && zen>statZenBest){ zenRecordShown=true;
+        popText($('combo'),'☯ ZEN BEST!',1.2); chime(1046,1319); }
     } else zen=0;
+    updZen();
     speed = curSpeed()*exitMult(frac);                    // calm centre exits, hot edge exits
     if(frac>0.8){ shrinkHits=1;                           // deterministic: every outer-edge tap tightens the next arc
       popText($('chest'),'⌁ TIGHT ARC',1.2); beep(233,0.15,'sawtooth',0.14); }
@@ -484,17 +501,19 @@ function tap(){
     if(ph!==phase){ phase=ph; popText($('milestone'),'PHASE '+(phase+1),1.5);
       flash=0.45; flashColor=hexToRgb(PHASE_COLS[phase%PHASE_COLS.length]); chime(1174,1568); }
     checkMilestone(); checkPalindrome();
+    lastRev=didReverse;
     newTarget();
-  } else if(dots.length>1){
-    loseDot(nd.i,px,py);
-  } else if(d<=targetHalf*1.4 && shields>0){
+  } else if(dots.length>1 && d<=targetHalf*1.4){
+    loseDot(ji,px,py);                        // near-miss while split: the wager takes a dot
+  } else if(dots.length===1 && d<=targetHalf*1.4 && shields>0){
     shields--; updShields(); combo=Math.floor(combo/2); perfectStreak=0;
     burst(px,py,'#5ac8ff',10); shake=6; ringPulse=1; flash=0.22; flashColor='90,200,255';
     slowmoT=0.35; slowmoS=0.35; beep(200,0.18,'square',0.24); beep(150,0.12,'square',0.16); buzz(25);
+    zen=0; updZen(); lastRev=false;
     if(quest&&quest.type==='clean'){ quest.start=hits; quest.got=0; updQuestHUD(); }
     newTarget();
   } else {
-    die(px,py);
+    die(px,py);                               // a wild tap kills — split or not: the wager has a downside
   }
 }
 
@@ -576,6 +595,7 @@ function finalizeDeath(){
   localStorage.pulseChests=statChests; localStorage.pulsePerfects=statPerfects;
   localStorage.pulseComets=statComets; localStorage.pulseSplits=statSplits;
   if(runSplitBest>statSplitBest){ statSplitBest=runSplitBest; localStorage.pulseSplitBest=statSplitBest; }
+  if(runZenBest>statZenBest){ statZenBest=runZenBest; localStorage.pulseZenBest=statZenBest; }
   lastRunScore=score; localStorage.pulseLast=score;
   if(isBest){ best=score; localStorage.pulseBest=best; }
   let dailyLine='';
@@ -593,7 +613,7 @@ function finalizeDeath(){
   m.innerHTML=
     `<h1 class="go-head">${head}</h1>`+
     `<p class="big go-score">${score}</p>`+
-    `<p style="opacity:.6">${sub} &nbsp;·&nbsp; ${tierFor(score)} &nbsp;·&nbsp; combo peaked ×${mult}${runSplits?' &nbsp;·&nbsp; ⧉ split ×'+runSplits+(runSplitBest?' (ran '+runSplitBest+' hits)':''):''}${dailyLine}</p>`+
+    `<p style="opacity:.6">${sub} &nbsp;·&nbsp; ${tierFor(score)} &nbsp;·&nbsp; combo peaked ×${mult}${runSplits?' &nbsp;·&nbsp; ⧉ split ×'+runSplits+(runSplitBest?' (ran '+runSplitBest+' hits)':''):''}${runZenBest>=3?' &nbsp;·&nbsp; ☯ zen ×'+runZenBest:''}${dailyLine}</p>`+
     `<p style="opacity:.45;font-style:italic;font-size:.92em">“${epitaph(isBest)}”</p>`+
     (recordBroken?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;opacity:.85">⚡ held the record zone for ${recordHits} hits</p>`:'')+
     (runComets?`<p style="color:#8cdcff;-webkit-text-fill-color:#8cdcff;opacity:.85">☄ caught a comet</p>`:'')+
@@ -633,6 +653,12 @@ function frame(now){
   if(state===S.play){
     dots.forEach(dot=>{ dot.ang+=dot.dir*effSpeed()*dt;
       if(dot.ang>Math.PI*2)dot.ang-=Math.PI*2; if(dot.ang<0)dot.ang+=Math.PI*2; });
+    // judged-dot selection with hysteresis so the bracket doesn't flicker between near-equidistant dots
+    if(dots.length>1){ const nd2=nearestDot();
+      const cur=dots[Math.min(judgedIdx,dots.length-1)];
+      const cd=Math.abs(angleDiff(cur.ang,targetA));
+      if(nd2.i!==judgedIdx && nd2.d < cd-0.15) judgedIdx=nd2.i;
+    } else judgedIdx=0;
     // short velocity tail, always on — direction is felt, not inferred
     dots.forEach(dot=>vtrail.push({x:CX+Math.cos(dot.ang)*R,y:CY+Math.sin(dot.ang)*R,a:0.3}));
     while(vtrail.length>7*dots.length) vtrail.shift();
@@ -708,9 +734,10 @@ function frame(now){
       const mx=Math.cos(targetA), my=Math.sin(targetA);
       ctx.beginPath(); ctx.moveTo(CX+mx*(R-6),CY+my*(R-6)); ctx.lineTo(CX+mx*(R+6),CY+my*(R+6)); ctx.stroke();
     }
-    // hot edges — the exit-speed map made visible
-    if(!eclipseActive && !gold && state===S.play){
-      ctx.lineCap='round'; ctx.lineWidth=(14+pArc*8)*0.6; ctx.strokeStyle='rgba(255,122,69,.4)';
+    // hot edges — the exit-speed map stays visible, gold included (deeper tint there)
+    if(!eclipseActive && state===S.play){
+      ctx.lineCap='round'; ctx.lineWidth=(14+pArc*8)*0.6;
+      ctx.strokeStyle=gold?'rgba(255,77,69,.5)':'rgba(255,122,69,.4)';
       ctx.beginPath(); ctx.arc(CX,CY,R,targetA-targetHalf,targetA-targetHalf*0.72); ctx.stroke();
       ctx.beginPath(); ctx.arc(CX,CY,R,targetA+targetHalf*0.72,targetA+targetHalf); ctx.stroke();
       ctx.lineCap='butt';
@@ -727,12 +754,12 @@ function frame(now){
     vtrail.forEach(t=>{ ctx.globalAlpha=Math.max(0,t.a); ctx.fillStyle=sk.dot;
       ctx.beginPath(); ctx.arc(t.x,t.y,3,0,Math.PI*2); ctx.fill(); });
     ctx.globalAlpha=1;
-    // bracket the dot the game will judge next (two-dot clarity)
+    // bracket the dot the game will judge next (two-dot clarity, hysteresis-stable)
     if(state===S.play && dots.length>1){
-      const jb=dots[nearestDot().i];
+      const jb=dots[Math.min(judgedIdx,dots.length-1)];
       const bx=CX+Math.cos(jb.ang)*R, by=CY+Math.sin(jb.ang)*R;
-      ctx.globalAlpha=0.35; ctx.strokeStyle='#fff'; ctx.lineWidth=1.5;
-      ctx.beginPath(); ctx.arc(bx,by,16,0,Math.PI*2); ctx.stroke(); ctx.globalAlpha=1;
+      ctx.globalAlpha=0.6; ctx.strokeStyle='#fff'; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(bx,by,15,0,Math.PI*2); ctx.stroke(); ctx.globalAlpha=1;
     }
     if(state===S.play && best>0 && !recordBroken && score>=best-5 && score<=best){
       const gx=CX+Math.cos(dots[0].ang+Math.PI)*R, gy=CY+Math.sin(dots[0].ang+Math.PI)*R;
@@ -742,8 +769,10 @@ function frame(now){
     dots.forEach((dot,i)=>{
       const d=Math.abs(angleDiff(dot.ang,targetA)), p=Math.max(0,1-d/0.6);
       const dx=CX+Math.cos(dot.ang)*R, dy=CY+Math.sin(dot.ang)*R;
+      if(dots.length>1 && i!==judgedIdx) ctx.globalAlpha=0.7;   // the off-duty dot steps back
       ctx.fillStyle=cometActive?'#8cdcff':(i===1?sk.arc:sk.dot); ctx.shadowColor=ctx.fillStyle; ctx.shadowBlur=blur(14+p*26);
       ctx.beginPath(); ctx.arc(dx,dy,(cometActive?12:9)+p*6,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+      ctx.globalAlpha=1;
       if(blinkOn>0 && !cometActive && state===S.play){
         ctx.fillStyle='#0a0a12'; ctx.beginPath(); ctx.arc(dx+3,dy-3,7+p*4,0,Math.PI*2); ctx.fill(); }
     });
