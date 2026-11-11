@@ -37,6 +37,17 @@
   #msg .big{font-size:20px;opacity:.9;margin-top:18px}
   .go-head{font-size:34px !important;letter-spacing:3px !important}
   .go-score{font-size:54px;margin-top:4px;color:#fff;-webkit-text-fill-color:#fff}
+  .wordmark{font-weight:900;letter-spacing:7px;font-size:17px;
+    background:linear-gradient(90deg,#5ac8ff,#ffd23f);-webkit-background-clip:text;
+    background-clip:text;color:transparent;opacity:.95;margin-bottom:2px}
+  #tally{margin-top:12px;font-size:15px;line-height:1.85;letter-spacing:1px;min-width:250px}
+  .tl{display:flex;justify-content:space-between;gap:18px;opacity:0;transform:translateY(6px);transition:all .25s ease-out}
+  .tl.in{opacity:.85;transform:none}
+  .tl .lab{opacity:.7}
+  .tl b{font-variant-numeric:tabular-nums}
+  @keyframes pulseBtn{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+  .holding{background:rgba(255,210,63,.3)!important;border-color:#ffd23f!important}
+  .pulse{animation:pulseBtn 1.2s ease-in-out infinite;border-color:#ffd23f!important}
   .pill{margin-top:22px;padding:12px 28px;border:1.5px solid rgba(255,255,255,.25);
     border-radius:40px;font-size:13px;letter-spacing:2px;opacity:.85}
   .row{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;justify-content:center}
@@ -66,6 +77,8 @@
     #msg .big{font-size:11px;margin-top:6px}
     .go-head{font-size:16px !important;letter-spacing:1px !important}
     .go-score{font-size:26px;margin-top:2px}
+    .wordmark{font-size:9px;letter-spacing:3px}
+    #tally{font-size:9px;min-width:150px;line-height:1.7;margin-top:6px}
     .pill{padding:5px 12px;font-size:8px;margin-top:8px;letter-spacing:1px}
     .row{gap:5px;margin-top:8px}
     button{padding:5px 9px;font-size:8px;letter-spacing:.5px}
@@ -88,7 +101,7 @@
   <p>Tap inside the <b style="color:#5ac8ff">glowing arc</b> — an <b>early</b> tap bounces you back, a <b>late</b> tap carries you on</p>
   <p style="opacity:.5;font-size:13px">Dead-centre <b style="color:#ffd23f">SPLITS</b> the dot in two · centre taps leave calm, edge taps leave hot · a near-miss spends a <b style="color:#5ac8ff">shield</b> 🛡</p>
   <div id="meta"></div>
-  <div class="row" data-ui><button data-ui id="dailyBtn">DAILY RUN</button></div>
+  <div class="row" data-ui><button data-ui id="dailyBtn">DAILY RUN</button><button data-ui id="vsBtn">⚔ VS</button><button data-ui id="duelBtn">⚔ DUEL 2P</button></div>
   <div class="row" id="skinrow" data-ui></div>
   <p class="big" id="mtip">Tap / Space to start</p>
   <div class="pill">ONE TAP · WRITE IT BACKWARDS</div>
@@ -153,6 +166,7 @@ let statComets=+(localStorage.pulseComets||0);
 let statSplits=+(localStorage.pulseSplits||0);
 let statSplitBest=+(localStorage.pulseSplitBest||0);
 let statZenBest=+(localStorage.pulseZenBest||0);
+let statCrowns=+(localStorage.pulseCrowns||0);
 let revPerfects=+(localStorage.pulseRevPerfects||0); // now counts perfects landed while split
 let questsDone=+(localStorage.pulseQuests||0);
 let lastRunScore=+(localStorage.pulseLast||0);
@@ -176,7 +190,7 @@ function refreshMeta(){
     (asc>0?` &nbsp;·&nbsp; <b style="color:#ffd23f">Ascension ${asc}</b>`:'') +
     (next?`<br><span style="opacity:.55;font-size:.92em">${next-lifetime} lifetime pts to Ascension ${asc+1}${ascPerkHint(asc+1)}</span>`:'<br><span style="opacity:.55;font-size:.92em">Max ascension reached</span>') +
     (dailyBestToday()?`<br><span style="opacity:.55;font-size:.92em">Today's daily best: <b>${dailyBestToday()}</b></span>`:'') +
-    `<br><span style="opacity:.45;font-size:.92em">📦 ${statChests} · 🎯 ${statPerfects} · ◆ ${questsDone} · ⧉ ${statSplits}${statSplitBest?' (best run '+statSplitBest+')':''}${statZenBest>=3?' · ☯ '+statZenBest:''}${statComets?' · ☄ '+statComets:''}${localStorage.pulsePhantom==='1'?' · 👻 '+revPerfects:''}</span>`;
+    `<br><span style="opacity:.45;font-size:.92em">📦 ${statChests} · 🎯 ${statPerfects} · ◆ ${questsDone} · ⧉ ${statSplits}${statSplitBest?' (best run '+statSplitBest+')':''}${statZenBest>=3?' · ☯ '+statZenBest:''}${statCrowns?' · 👑 '+statCrowns:''}${statComets?' · ☄ '+statComets:''}${localStorage.pulsePhantom==='1'?' · 👻 '+revPerfects:''}</span>`;
 }
 function ascPerkHint(r){ return r===1?' (skin)':r===2?' (+1 start shield)':r===3?' (dot trail)':''; }
 function renderSkinRow(){
@@ -189,11 +203,28 @@ function renderSkinRow(){
     row.appendChild(b); });
 }
 let dailyMode=false;
-function refreshDailyBtn(){ const b=$('dailyBtn'); if(!b)return;
-  b.className=dailyMode?'on':''; b.textContent=dailyMode?'DAILY RUN ✓ (2× lifetime)':'DAILY RUN';
-  $('mode').textContent=dailyMode?('DAILY · '+todayStr()+(dailyBestToday()?(' · BEST '+dailyBestToday()):'')):''; }
+function refreshDailyBtn(){ const b=$('dailyBtn');
+  if(b){ b.className=dailyMode?'on':''; b.textContent=dailyMode?'DAILY RUN ✓ (2× lifetime)':'DAILY RUN'; }
+  $('mode').textContent = duel ? ('PALINDROME · DUEL · PLAYER '+duel.stage)
+    : (dailyMode ? ('DAILY · '+todayStr()+(rivalTarget?(' · VS '+rivalTarget):(dailyBestToday()?(' · BEST '+dailyBestToday()):''))) : ''); }
+function wireModeButtons(){
+  const db=$('dailyBtn'); if(db) db.onclick=e=>{ e.stopPropagation();
+    dailyMode=!dailyMode; if(!dailyMode) rivalTarget=0; refreshDailyBtn(); };
+  const vb=$('vsBtn'); if(vb) vb.onclick=e=>{ e.stopPropagation(); let v=0;
+    try{ v=parseInt(prompt("Rival's score to beat (today's DAILY seed):")||'0',10); }catch(_){}
+    if(v>0){ rivalTarget=v; dailyMode=true; } refreshDailyBtn(); };
+  const ub=$('duelBtn'); if(ub) ub.onclick=e=>{ e.stopPropagation();
+    duel={seed:(Math.random()*4294967296)>>>0, stage:1, p1:0}; dailyMode=false; rivalTarget=0; start(); };
+}
+function wireHold(btn,fn){ if(!btn) return; let t=null;
+  const down=e=>{ e.stopPropagation(); e.preventDefault(); btn.classList.add('holding');
+    t=setTimeout(()=>{ btn.classList.remove('holding'); t=null; fn(); },600); };
+  const up=()=>{ if(t){ clearTimeout(t); t=null; } btn.classList.remove('holding'); };
+  btn.addEventListener('mousedown',down); btn.addEventListener('touchstart',down,{passive:false});
+  ['mouseup','mouseleave','touchend','touchcancel'].forEach(ev=>btn.addEventListener(ev,up));
+}
 refreshMeta(); renderSkinRow();
-setTimeout(()=>{ const b=$('dailyBtn'); if(b) b.onclick=e=>{ e.stopPropagation(); dailyMode=!dailyMode; refreshDailyBtn(); }; refreshDailyBtn(); },0);
+setTimeout(()=>{ wireModeButtons(); refreshDailyBtn(); },0);
 
 // ---- state ----
 const S={menu:0,play:1,dying:2,dead:3};
@@ -217,6 +248,9 @@ let quest=null,qrng=Math.random,runQuests=0,revenged=false;
 let blinkT=0,blinkNext=7,blinkOn=0,deathInfo=null,shrinkHits=0;
 let lastActor=0,splitRun=0,runSplitBest=0,zen=0;
 let judgedIdx=0,lastRev=false,runZenBest=0,zenRecordShown=false,splitRecordShown=false;
+let led={hit:0,perf:0,chest:0,quest:0,zen:0,ecl:0,rev:0};   // the score ledger — every point has a story
+let tallyDone=true,tallyEndT=0,tallySkip=null,tightSpawn=false;
+let rivalTarget=0,crowned=false,duel=null;
 const NOTES=[262,294,330,392,440,523,587,659,784,880];
 const TICKB=[0.28,0.20,0.13,0.07], TICKF=[470,600,760,950];
 
@@ -232,11 +266,14 @@ function nearestDot(){ let bi=0,bd=1e9;
 
 function newTarget(){
   eclipseActive=false; cometActive=false;
+  // in DUEL, every roll is keyed to the hit counter so both players meet the same events at the same hits
+  const dr = duel ? mulberry32((duel.seed ^ ((hits+1)*2654435761))>>>0) : null;
+  const rr = ()=> dr ? dr() : rng();
   const gap=Math.min(Math.PI*0.85, Math.max(0.9, effSpeed()*0.22));
   // targets spawn AHEAD of the acting dot's heading; a REVERSE routes closer-but-tighter
   const ref=dots[Math.min(lastActor,dots.length-1)]||dots[0];
   const clear=gap*(lastRev?0.5:0.8);
-  const roll=()=>ref.ang+ref.dir*( lastRev ? (gap*0.6+rng()*1.0) : (gap+rng()*1.7) );
+  const roll=()=>ref.ang+ref.dir*( lastRev ? (gap*0.6+rr()*1.0) : (gap+rr()*1.7) );
   let a=roll();
   for(let t=0;t<40;t++){
     if(dots.every(dt=>Math.abs(angleDiff(a,dt.ang))>=clear)) break;
@@ -245,17 +282,18 @@ function newTarget(){
   a=((a%(Math.PI*2))+Math.PI*2)%(Math.PI*2);
   targetA=a;
   targetHalf=curHalf()*(overclockLeft>0?1.5:1)*(TINY?1.15:1)*(shrinkHits>0?0.7:1)*(dots.length>1?0.85:1)*(lastRev?0.9:1);
+  tightSpawn=lastRev;
   if(shrinkHits>0) shrinkHits--;
-  gold = tintHits>0 ? true : (rng()<0.14);
+  gold = tintHits>0 ? true : (rr()<0.14);
   if(overclockLeft===0){
-    if(!eclipseUsed && hits>=30 && rng()<0.008){
+    if(!duel && !eclipseUsed && hits>=30 && rr()<0.008){
       eclipseActive=true; eclipseUsed=true; gold=false;
       popText($('milestone'),'ECLIPSE',1.5); beep(196,0.5,'sine',0.12);
-    } else if(!cometUsed && hits>=20 && rng()<0.007){
+    } else if(!duel && !cometUsed && hits>=20 && rr()<0.007){
       cometActive=true; cometUsed=true;
       popText($('chest'),'☄ COMET · ×10',1.35); chime(659,880);
     } else if(nextOverclock>0 && hits>=nextOverclock){
-      overclockLeft=3; nextOverclock=hits+35+Math.floor(rng()*10);
+      overclockLeft=3; nextOverclock=hits+(duel?38:35+Math.floor(rng()*10));
       targetHalf=curHalf()*1.5*(TINY?1.15:1);
       popText($('milestone'),'OVERCLOCK ×2',1.5);
       beep(TICKF[1],0.06,'square',0.15); beep(TICKF[2],0.06,'square',0.15); beep(TICKF[3],0.09,'square',0.18);
@@ -283,12 +321,13 @@ function updQuestHUD(){ const el=$('quest'); if(!el) return;
   el.textContent = quest ? '◆ '+quest.label+' · '+Math.min(quest.got,quest.need)+'/'+quest.need : ''; }
 function checkQuest(){
   if(!quest||quest.got<quest.need) return;
-  score+=quest.reward; $('score').textContent=score;
+  score+=quest.reward; led.quest+=quest.reward; $('score').textContent=score;
   questsDone++; runQuests++; localStorage.pulseQuests=questsDone;
   popText($('combo'),'◆ QUEST · +'+quest.reward,1.25); chime(988,1319); buzz(15);
   newQuest(); updNextGoal();
 }
 function updNextGoal(){ const el=$('nextgoal'); if(!el) return;
+  if(rivalTarget>0 && score<=rivalTarget){ el.textContent='👑 VS '+rivalTarget+' · −'+(rivalTarget-score+1); return; }
   const nm=MILESTONES.find(m=>m>score);
   el.textContent = nm ? ('NEXT '+nm+' · −'+(nm-score)) : ''; }
 function updZen(){ const el=$('zen'); if(!el) return;
@@ -300,19 +339,23 @@ function start(){
   runChests=0; runPerfects=0; runComets=0; runSplits=0;
   eclipseUsed=false; eclipseActive=false; cometUsed=false; cometActive=false;
   overclockLeft=0; recordBroken=false; recordHits=0; palindromesSeen.clear();
-  shields = ascRank(lifetime)>=2 ? 3 : 2;
+  shields = duel ? 2 : (ascRank(lifetime)>=2 ? 3 : 2);   // duel neutralizes meta perks
   dots=[{ang:-Math.PI/2,dir:1}]; particles=[]; shocks=[]; trail=[];
   dyingT=0; timeScale=1; slowmoT=0; hbT=0; tintHits=0;
   milestonesHit.clear();
   rng = dailyMode ? mulberry32(dailySeed()) : Math.random;
   qrng = dailyMode ? mulberry32(dailySeed()^0x5bd1e995) : Math.random;
-  speed=curSpeed(); nextChest = 8 + Math.floor(rng()*8);
-  nextOverclock = 35 + Math.floor(rng()*10);
+  speed=curSpeed();
+  nextChest = duel ? 10 : 8 + Math.floor(rng()*8);
+  nextOverclock = duel ? 38 : 35 + Math.floor(rng()*10);
   revenged=false; blinkT=0; blinkOn=0; deathInfo=null; runQuests=0; shrinkHits=0;
   lastActor=0; splitRun=0; runSplitBest=0; zen=0; vtrail=[];
   judgedIdx=0; lastRev=false; runZenBest=0; zenRecordShown=false; splitRecordShown=false; updZen();
+  led={hit:0,perf:0,chest:0,quest:0,zen:0,ecl:0,rev:0};
+  tallyDone=true; tallySkip=null; tightSpawn=false; crowned=false;
   try{ $('shields').style.opacity=1; }catch(e){}
-  newQuest(); updNextGoal();
+  if(duel){ quest=null; updQuestHUD(); } else newQuest();
+  updNextGoal(); refreshDailyBtn();
   $('score').textContent=0; $('score').style.color=''; updShields();
   newTarget(); state=S.play; $('msg').classList.add('hidden');
 }
@@ -359,10 +402,11 @@ function openChest(){
   const px=CX+Math.cos(anchor.ang)*R, py=CY+Math.sin(anchor.ang)*R;
   const lucky = dailyMode && runChests===0;
   const jp = lucky?0.15:0.05;
-  const roll=rng(); let txt;
+  const roll = duel ? mulberry32((duel.seed ^ 0x51ed270b ^ ((hits+1)*0x85EBCA6B))>>>0)() : rng();
+  let txt;
   if(roll<jp){ jackpotHits=10; txt=lucky?'✦ LUCKY DAY · JACKPOT ×2':'✦ JACKPOT · ×2 FOR 10 HITS'; }
   else if(roll<0.40 && shields<3){ shields++; updShields(); txt='✦ CHEST +1 SHIELD 🛡'; }
-  else if(roll<0.70){ const b=15+combo; score+=b; txt='✦ CHEST +'+b+' PTS'; }
+  else if(roll<0.70){ const b=15+combo; score+=b; led.chest+=b; txt='✦ CHEST +'+b+' PTS'; }
   else { tintHits=6; txt='✦ CHEST · GOLD RUSH ×6'; }
   runChests++;
   if(quest&&quest.type==='chest'){ quest.got++; updQuestHUD(); checkQuest(); }
@@ -371,7 +415,7 @@ function openChest(){
   popText($('chest'), txt, 1.3);
   burst(px,py, roll<jp?'#ffd23f':'#7CFC9E', roll<jp?32:22);
   flash=0.35; flashColor=roll<jp?'255,210,63':'124,252,158'; chime(880,1174);
-  nextChest = hits + 8 + Math.floor(rng()*8);
+  nextChest = hits + (duel?10:8 + Math.floor(rng()*8));
 }
 
 function loseDot(i,px,py){
@@ -389,7 +433,11 @@ function loseDot(i,px,py){
 
 function tap(){
   if(state===S.menu){ start(); return; }
-  if(state===S.dead){ reset(); return; }
+  if(state===S.dead){
+    if(!tallyDone){ if(tallySkip) tallySkip(); return; }  // first tap completes the tally
+    if(duel) return;                                      // duel flow is button-driven — no accidental handoffs
+    if(performance.now()-tallyEndT<350) return;           // debounce so the skip-tap can't restart
+    reset(); return; }
   if(state===S.dying) return;
   if(state!==S.play) return;
 
@@ -400,8 +448,8 @@ function tap(){
 
   if(d<=targetHalf){
     const frac=d/targetHalf;
-    // perfect zone: floor 0.2×arc, cap 0.35×arc — tight enough that zen taps aren't automatic perfects
-    const perfect = d <= Math.min(targetHalf*0.35, Math.max(targetHalf*0.2, effSpeed()*0.02));
+    // perfect zone: floor 0.12×arc, cap 0.22×arc — strictly inside the zen band at every speed
+    const perfect = d <= Math.min(targetHalf*0.22, Math.max(targetHalf*0.12, effSpeed()*0.02));
     const wasEclipse=eclipseActive, wasComet=cometActive;
     // the palindrome rule: before the midpoint bounces you back; past it carries you on
     const beforeMid = angleDiff(targetA,dot.ang)*dot.dir > 0;
@@ -418,9 +466,11 @@ function tap(){
     if(jackpotHits>0){ gain*=2; jackpotHits--; }
     if(overclockLeft>0){ gain*=2; overclockLeft--; }
     if(dots.length>1 && !didSplit){ gain*=1.5; }          // split pay: the wager's carrot
+    if(didReverse){ gain*=1.3; }                          // reverse pay: closer-and-tighter earns it
     if(wasComet){ gain*=10; }
     gain=Math.round(gain); score+=gain;
-    if(wasEclipse){ const bounty=25+combo; score+=bounty;
+    led[perfect?'perf':'hit']+=gain;
+    if(wasEclipse){ const bounty=25+combo; score+=bounty; led.ecl+=bounty;
       popText($('chest'),'☀ +'+(gain+bounty),1.4);
       flash=0.9; flashColor='255,255,240'; chime(523,659); beep(784,0.3,'sine',0.2); }
     if(wasComet){ runComets++;
@@ -428,9 +478,12 @@ function tap(){
       burst(px,py,'#ffd23f',40); flash=0.6; flashColor='140,220,255';
       chime(523,784); beep(1046,0.25,'sine',0.2); }
     $('score').textContent=score;
-    if(!revenged && lastRunScore>=10 && score>lastRunScore && best!==lastRunScore){
-      revenged=true; score+=10; $('score').textContent=score;
+    if(!duel && !revenged && lastRunScore>=10 && score>lastRunScore && best!==lastRunScore){
+      revenged=true; score+=10; led.rev+=10; $('score').textContent=score;
       popText($('combo'),'⚔ REVENGED · +10',1.2); beep(587,0.1,'sine',0.2); beep(880,0.14,'sine',0.18); buzz(15); }
+    if(rivalTarget>0 && !crowned && score>rivalTarget){
+      crowned=true; statCrowns++; localStorage.pulseCrowns=statCrowns;
+      popText($('milestone'),'👑 CROWN TAKEN',1.5); flash=0.5; flashColor='255,210,63'; chime(1318,1760); buzz([20,40,20]); }
     if(quest){
       if(quest.type==='gold'&&gold) quest.got++;
       else if(quest.type==='perfect'&&perfect) quest.got++;
@@ -457,8 +510,8 @@ function tap(){
         popText($('combo'),'⧉ BEST RUN!',1.2); chime(988,1175); } }
     if(frac<0.25){ zen++; runZenBest=Math.max(runZenBest,zen);
       if(zen===3){ popText($('combo'),'☯ ZEN · +5/hit',1.15); chime(523,659); }
-      if(zen>=3){ score+=5; $('score').textContent=score; beep(1318,0.03,'sine',0.05); }
-      if(!zenRecordShown && statZenBest>=3 && zen>statZenBest){ zenRecordShown=true;
+      if(zen>=3){ score+=5; led.zen+=5; $('score').textContent=score; beep(1318,0.03,'sine',0.05); }
+      if(!zenRecordShown && zen>Math.max(statZenBest,3)){ zenRecordShown=true;
         popText($('combo'),'☯ ZEN BEST!',1.2); chime(1046,1319); }
     } else zen=0;
     updZen();
@@ -478,6 +531,8 @@ function tap(){
       perfectStreak++; runPerfects++; buzz([12,30,12]);
       if(dots.length===2 && !didSplit){                   // the hidden road to Phantom
         revPerfects++; localStorage.pulseRevPerfects=revPerfects;
+        if(revPerfects===10||revPerfects===25||revPerfects===50){
+          popText($('milestone'),'👻 ×'+revPerfects,1.3); chime(1046,1568); }
         if(revPerfects>=3 && localStorage.pulsePhantom!=='1'){
           localStorage.pulsePhantom='1';
           popText($('milestone'),'??? → PHANTOM FOUND',1.4); chime(1046,1568); renderSkinRow(); } }
@@ -518,7 +573,9 @@ function tap(){
 }
 
 function die(px,py){ state=S.dying; dyingT=0; shake=18; flash=0.7; flashColor='255,77,109';
-  deathInfo={over:overclockLeft>0,gold,shieldsLeft:shields,ecl:eclipseActive,hits};
+  deathInfo={over:overclockLeft>0,gold,shieldsLeft:shields,ecl:eclipseActive,hits,
+    ang:Math.atan2((py||CY)-CY,(px||CX)-CX)};
+  if(dots.length>1) beep(98,0.5,'sawtooth',0.25);        // the split wager lost — a deeper sting
   if(best>0&&score>best){ popText($('milestone'),'NEW BEST',1.6);
     for(let i=0;i<4;i++) burst(CX+rand(-R,R)*0.7, CY+rand(-R,R)*0.7,
       PHASE_COLS[Math.floor(Math.random()*PHASE_COLS.length)], 16); }
@@ -550,6 +607,8 @@ function makeShareCard(){
   g.beginPath(); g.arc(300,150,95,-0.5,1.7); g.stroke(); g.shadowBlur=0;
   g.fillStyle=sk.dot; g.beginPath(); g.arc(300+Math.cos(1.7)*95,150+Math.sin(1.7)*95,10,0,7); g.fill();
   g.beginPath(); g.arc(300+Math.cos(-0.5)*95,150+Math.sin(-0.5)*95,10,0,7); g.fill(); // two dots — the split
+  if(deathInfo&&deathInfo.ang!=null){ g.fillStyle='#ff4d6d'; g.shadowColor='#ff4d6d'; g.shadowBlur=12;
+    g.beginPath(); g.arc(300+Math.cos(deathInfo.ang)*95,150+Math.sin(deathInfo.ang)*95,6,0,7); g.fill(); g.shadowBlur=0; } // where I died
   g.textAlign='center'; g.fillStyle='#fff';
   g.font='900 30px Segoe UI,sans-serif'; g.fillText('PALINDROME',300,54);
   g.font='900 90px Segoe UI,sans-serif'; g.fillStyle=sk.arc; g.fillText(score,300,185);
@@ -557,7 +616,7 @@ function makeShareCard(){
   g.fillText(tierFor(score)+'  ·  combo ×'+(1+Math.floor(comboPeak/5)*0.5).toFixed(1)+(runSplits?'  ·  ⧉ '+runSplits:''),300,232);
   const asc=ascRank(lifetime);
   g.font='500 15px Segoe UI,sans-serif'; g.fillStyle='rgba(255,210,63,.85)';
-  g.fillText((asc>0?('ASCENSION '+asc+'  ·  '):'')+'Day '+streak+' 🔥'+(statComets?('  ·  ☄ '+statComets):''),300,262);
+  g.fillText((asc>0?('ASCENSION '+asc+'  ·  '):'')+'Day '+streak+' 🔥'+(statCrowns?('  ·  👑 '+statCrowns):'')+(statComets?('  ·  ☄ '+statComets):''),300,262);
   g.font='500 14px Segoe UI,sans-serif'; g.fillStyle='rgba(255,255,255,.5)';
   g.fillText('can you beat it?',300,290);
   return c;
@@ -581,6 +640,45 @@ function shareCard(btn){
       a.href=URL.createObjectURL(blob); a.download='palindrome-'+score+'.png'; a.click(); btn.textContent='CARD SAVED ✓';
     })();
   }
+}
+
+// ---- the tally: watch your run add itself up ----
+function runTally(items,total,isBest){
+  const box=$('tally'), gs=$('gscore'); if(!box||!gs){ tallyDone=true; return; }
+  tallyDone=false;
+  const easeOQ=t=>1-Math.pow(1-t,4);
+  items.forEach(it=>{ const row=document.createElement('div'); row.className='tl';
+    row.innerHTML='<span class="lab">'+it[0]+'</span><b>0</b>'; box.appendChild(row); });
+  const rows=[...box.children];
+  const STAG=140, CNT=280, HOLD=300;
+  const endT=(items.length-1)*STAG+CNT+HOLD;
+  items.forEach((it,i)=>beep(660+i*60,0.04,'square',0.1,i*STAG/1000)); // rising ladder as lines land
+  const t0=performance.now();
+  function land(){
+    if(tallyDone) return;
+    tallyDone=true; tallyEndT=performance.now(); tallySkip=null;
+    rows.forEach((r,i)=>{ r.classList.add('in'); r.querySelector('b').textContent=items[i][1]; });
+    gs.textContent=total;
+    gs.style.transition='none'; gs.style.transform='scale(1.3)';
+    requestAnimationFrame(()=>{ gs.style.transition='transform .2s ease-out'; gs.style.transform='scale(1)'; });
+    if(isBest){ gs.style.color='#ffd23f'; beep(2093,0.3,'sine',0.18,0.1); }
+    flash=0.25; flashColor='255,255,255';
+    chime(880,1174); beep(1760,0.25,'sine',0.2,0.09); buzz([15,30,25]);
+  }
+  tallySkip=land;
+  function step(now){
+    if(tallyDone) return;
+    const t=now-t0; let run=0;
+    items.forEach((it,i)=>{ const st=i*STAG;
+      if(t>=st) rows[i].classList.add('in');
+      const p=Math.min(1,Math.max(0,(t-st)/CNT));
+      const v=Math.round(it[1]*easeOQ(p));
+      rows[i].querySelector('b').textContent=v; run+=v; });
+    gs.textContent=run;
+    if(t>=endT){ land(); return; }
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
 }
 
 function finalizeDeath(){
@@ -608,34 +706,69 @@ function finalizeDeath(){
   if(isBest&&score>0){ head='NEW BEST!'; sub='You beat your record'; }
   else if(best>0&&score>=best*0.8&&score<best){ head='SO CLOSE'; sub=(best-score)+' from your BEST'; }
   else { head='GAME OVER'; sub='Best '+best; }
+  if(duel){
+    if(duel.stage===1){ duel.p1=score; head='PLAYER 1 · '+score; sub='Hold the button to hand over'; }
+    else { const p2=score;
+      head = p2>duel.p1 ? 'PLAYER 2 WINS' : (p2<duel.p1 ? 'PLAYER 1 WINS' : 'DEAD HEAT');
+      sub = 'P1 '+duel.p1+' &nbsp;·&nbsp; P2 '+p2; }
+  }
   const mult=(1+Math.floor(comboPeak/5)*0.5).toFixed(1);
   const m=$('msg'); m.classList.remove('hidden');
   m.innerHTML=
+    `<div class="wordmark">PALINDROME</div>`+
     `<h1 class="go-head">${head}</h1>`+
-    `<p class="big go-score">${score}</p>`+
+    `<p class="big go-score" id="gscore">${score}</p>`+
+    `<div id="tally"></div>`+
     `<p style="opacity:.6">${sub} &nbsp;·&nbsp; ${tierFor(score)} &nbsp;·&nbsp; combo peaked ×${mult}${runSplits?' &nbsp;·&nbsp; ⧉ split ×'+runSplits+(runSplitBest?' (ran '+runSplitBest+' hits)':''):''}${runZenBest>=3?' &nbsp;·&nbsp; ☯ zen ×'+runZenBest:''}${dailyLine}</p>`+
     `<p style="opacity:.45;font-style:italic;font-size:.92em">“${epitaph(isBest)}”</p>`+
+    (rivalTarget&&!duel?`<p style="color:${score>rivalTarget?'#ffd23f':'#8cdcff'};-webkit-text-fill-color:${score>rivalTarget?'#ffd23f':'#8cdcff'};opacity:.85">${score>rivalTarget?'👑 CROWN TAKEN · ':'⚔ crown missed · '}${score} v ${rivalTarget}</p>`:'')+
     (recordBroken?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;opacity:.85">⚡ held the record zone for ${recordHits} hits</p>`:'')+
     (runComets?`<p style="color:#8cdcff;-webkit-text-fill-color:#8cdcff;opacity:.85">☄ caught a comet</p>`:'')+
     (justUnlocked.length?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;margin-top:12px">✦ SKIN UNLOCKED: ${justUnlocked.join(', ')}</p>`:'')+
     (ascNow>ascBefore?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;margin-top:10px">✦ ASCENSION ${ascNow} REACHED${ascPerkHint(ascNow)}</p>`:'')+
     `<p style="opacity:.5;font-size:.9em;margin-top:12px">🔥 Day ${streak} &nbsp;·&nbsp; Lifetime ${lifetime} &nbsp;·&nbsp; 📦 ${statChests} &nbsp;·&nbsp; 🎯 ${statPerfects} &nbsp;·&nbsp; ◆ ${questsDone} &nbsp;·&nbsp; ⧉ ${statSplits}${statComets?' &nbsp;·&nbsp; ☄ '+statComets:''}</p>`+
-    `<div class="row" data-ui>`+
-      `<button data-ui id="shareBtn">SHARE CARD</button>`+
-      `<button data-ui id="copyBtn">COPY TEXT</button>`+
-      `<button data-ui id="againBtn">PLAY AGAIN ▸</button>`+
-    `</div>`+
-    `<div class="row" data-ui><button data-ui id="dailyBtn">DAILY RUN</button></div>`+
-    `<div class="row" id="skinrow" data-ui></div>`+
-    `<p style="opacity:.35;font-size:.85em;margin-top:16px">tap anywhere to retry</p>`;
-  renderSkinRow();
-  const db=$('dailyBtn'); db.onclick=e=>{ e.stopPropagation(); dailyMode=!dailyMode; refreshDailyBtn(); };
-  refreshDailyBtn();
-  $('againBtn').onclick=e=>{ e.stopPropagation(); reset(); };
-  $('shareBtn').onclick=e=>{ e.stopPropagation(); shareCard($('shareBtn')); };
-  $('copyBtn').onclick=e=>{ e.stopPropagation();
-    const txt=`PALINDROME — ${score} pts · ${tierFor(score)} · combo ×${mult}${runSplits?' · ⧉ '+runSplits:''} 🎯 can you beat it?`;
-    try{ navigator.clipboard.writeText(txt); $('copyBtn').textContent='COPIED ✓'; }catch(_){ $('copyBtn').textContent=txt; } };
+    (duel
+     ? (duel.stage===1
+        ? `<div class="row" data-ui><button data-ui id="holdBtn">HOLD ▸ PLAYER 2</button><button data-ui id="exitDuelBtn">EXIT ▸ SOLO</button></div>`
+        : `<div class="row" data-ui><button data-ui id="rematchBtn">⚔ REMATCH</button><button data-ui id="exitDuelBtn">EXIT ▸ SOLO</button></div>`)
+     : `<div class="row" data-ui>`+
+       `<button data-ui id="shareBtn">SHARE CARD</button>`+
+       `<button data-ui id="copyBtn">COPY TEXT</button>`+
+       `<button data-ui id="againBtn">PLAY AGAIN ▸</button>`+
+       `</div>`+
+       `<div class="row" data-ui><button data-ui id="dailyBtn">DAILY RUN</button><button data-ui id="vsBtn">⚔ VS</button><button data-ui id="duelBtn">⚔ DUEL 2P</button></div>`+
+       `<div class="row" id="skinrow" data-ui></div>`+
+       `<p style="opacity:.35;font-size:.85em;margin-top:16px">tap anywhere to retry</p>`);
+  renderSkinRow(); wireModeButtons(); refreshDailyBtn();
+  if(duel){
+    const ex=$('exitDuelBtn'); if(ex) ex.onclick=e=>{ e.stopPropagation(); duel=null; refreshDailyBtn(); reset(); };
+    if(duel.stage===1){ wireHold($('holdBtn'),()=>{ duel.stage=2; reset(); }); }
+    else { const rb=$('rematchBtn'); if(rb) rb.onclick=e=>{ e.stopPropagation();
+      duel={seed:(Math.random()*4294967296)>>>0, stage:1, p1:0}; reset(); }; }
+  } else {
+    $('againBtn').onclick=e=>{ e.stopPropagation(); reset(); };
+    $('shareBtn').onclick=e=>{ e.stopPropagation(); shareCard($('shareBtn')); };
+    if(isBest&&score>0) $('shareBtn').classList.add('pulse');   // the record-break death is THE share moment
+    $('copyBtn').onclick=e=>{ e.stopPropagation();
+      const sup = runSplitBest>=5?('⧉ survived '+runSplitBest+' split'):(runZenBest>=4?('☯ zen ×'+runZenBest):('combo ×'+mult));
+      const txt = crowned
+        ? `PALINDROME 👑 Took your crown on DAILY ${todayStr()} — ${score} v ${rivalTarget}. Reclaim it?${statCrowns>1?' (crowns ×'+statCrowns+')':''}`
+        : (dailyMode
+          ? `PALINDROME DAILY ${todayStr()} — ${score} pts · ${tierFor(score)}. Same orbit, same chests, zero excuses. Beat me.`
+          : `PALINDROME · ${score} — ${tierFor(score)} · ${sup} 🎯 can you beat it?`);
+      try{ navigator.clipboard.writeText(txt); $('copyBtn').textContent='COPIED ✓'; }catch(_){ $('copyBtn').textContent=txt; } };
+  }
+  // the tally — the run adds itself up
+  const items=[];
+  if(led.hit) items.push(['TAPS ×'+(hits-runPerfects),led.hit]);
+  if(led.perf) items.push(['PERFECTS ×'+runPerfects,led.perf]);
+  if(led.chest) items.push(['📦 CHESTS',led.chest]);
+  if(led.quest) items.push(['◆ QUESTS',led.quest]);
+  if(led.zen) items.push(['☯ ZEN',led.zen]);
+  if(led.ecl) items.push(['☀ ECLIPSE',led.ecl]);
+  if(led.rev) items.push(['⚔ REVENGE',led.rev]);
+  if(items.length&&score>0){ $('gscore').textContent='0'; runTally(items,score,isBest&&score>0); }
+  else tallyDone=true;
 }
 
 // ---- loop ----
@@ -741,6 +874,10 @@ function frame(now){
       ctx.beginPath(); ctx.arc(CX,CY,R,targetA-targetHalf,targetA-targetHalf*0.72); ctx.stroke();
       ctx.beginPath(); ctx.arc(CX,CY,R,targetA+targetHalf*0.72,targetA+targetHalf); ctx.stroke();
       ctx.lineCap='butt';
+    }
+    if(tightSpawn && state===S.play && !eclipseActive){   // a reversed spawn: closer, but tighter — shown, not told
+      ctx.strokeStyle='rgba(255,255,255,.3)'; ctx.lineWidth=2; ctx.setLineDash([3,6]);
+      ctx.beginPath(); ctx.arc(CX,CY,R-12,targetA-targetHalf,targetA+targetHalf); ctx.stroke(); ctx.setLineDash([]);
     }
     if(state===S.play){
       const nm=MILESTONES.find(m=>!milestonesHit.has(m)&&m>score&&m-score<=3);
