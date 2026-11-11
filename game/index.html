@@ -149,6 +149,7 @@ let statChests=+(localStorage.pulseChests||0);
 let statPerfects=+(localStorage.pulsePerfects||0);
 let statComets=+(localStorage.pulseComets||0);
 let statSplits=+(localStorage.pulseSplits||0);
+let statSplitBest=+(localStorage.pulseSplitBest||0);
 let revPerfects=+(localStorage.pulseRevPerfects||0); // now counts perfects landed while split
 let questsDone=+(localStorage.pulseQuests||0);
 let lastRunScore=+(localStorage.pulseLast||0);
@@ -202,7 +203,7 @@ let speed=0,targetA=0,targetHalf=0.42,gold=false;
 let shake=0,ringPulse=0,flash=0,flashColor='255,255,255',reversalGlow=0;
 let dyingT=0,timeScale=1,slowmoT=0,slowmoS=1,hbT=0,tintHits=0,nextChest=0;
 let tickIdx=0;
-let particles=[],shocks=[],trail=[];
+let particles=[],shocks=[],trail=[],vtrail=[];
 const milestonesHit=new Set();
 let eclipseUsed=false,eclipseActive=false;
 let cometUsed=false,cometActive=false;
@@ -211,6 +212,7 @@ let recordBroken=false,recordHits=0;
 let palindromesSeen=new Set();
 let quest=null,qrng=Math.random,runQuests=0,revenged=false;
 let blinkT=0,blinkNext=7,blinkOn=0,deathInfo=null,shrinkHits=0;
+let lastActor=0,splitRun=0,runSplitBest=0,zen=0;
 const NOTES=[262,294,330,392,440,523,587,659,784,880];
 const TICKB=[0.28,0.20,0.13,0.07], TICKF=[470,600,760,950];
 
@@ -218,8 +220,8 @@ function rand(a,b){ return a+Math.random()*(b-a); }
 function angleDiff(a,b){ let d=(a-b)%(Math.PI*2); if(d>Math.PI)d-=Math.PI*2; if(d<-Math.PI)d+=Math.PI*2; return d; }
 function curSpeed(){ return 2.1 + (6.2-2.1)*(1-Math.exp(-hits/55)) + Math.max(0,hits-60)*0.004; }
 function curHalf(){ return 0.13 + 0.29*Math.exp(-hits/120); }
-function effSpeed(){ return speed*(overclockLeft>0?1.6:1); }
-function exitMult(frac){ return Math.min(2.0, 0.55 + 1.45*Math.pow(frac,3)); } // calm centre; edge taps launch HOT (cubic)
+function effSpeed(){ return speed*(overclockLeft>0?1.6:1)*(dots.length>1?1.25:1); } // split play runs hotter — a wager, not insurance
+function exitMult(frac){ return Math.min(2.0, 0.8 + 1.2*Math.pow(frac,3)); } // calm centre (no parking lane); edge launches HOT
 function nearestDot(){ let bi=0,bd=1e9;
   dots.forEach((dt,i)=>{ const d=Math.abs(angleDiff(dt.ang,targetA)); if(d<bd){ bd=d; bi=i; } });
   return {i:bi,d:bd}; }
@@ -227,11 +229,16 @@ function nearestDot(){ let bi=0,bd=1e9;
 function newTarget(){
   eclipseActive=false; cometActive=false;
   const gap=Math.min(Math.PI*0.85, Math.max(0.9, effSpeed()*0.22));
-  let a=0;
-  for(let t=0;t<40;t++){ a=rng()*Math.PI*2;
-    if(dots.every(dt=>Math.abs(angleDiff(a,dt.ang))>=gap)) break; }
+  // targets spawn AHEAD of the acting dot's heading — your direction chooses where the world unfolds
+  const ref=dots[Math.min(lastActor,dots.length-1)]||dots[0];
+  let a=ref.ang+ref.dir*(gap+rng()*1.7);
+  for(let t=0;t<40;t++){
+    if(dots.every(dt=>Math.abs(angleDiff(a,dt.ang))>=gap*0.8)) break;
+    a=ref.ang+ref.dir*(gap+rng()*1.7);
+  }
+  a=((a%(Math.PI*2))+Math.PI*2)%(Math.PI*2);
   targetA=a;
-  targetHalf=curHalf()*(overclockLeft>0?1.5:1)*(TINY?1.15:1)*(shrinkHits>0?0.7:1);
+  targetHalf=curHalf()*(overclockLeft>0?1.5:1)*(TINY?1.15:1)*(shrinkHits>0?0.7:1)*(dots.length>1?0.85:1);
   if(shrinkHits>0) shrinkHits--;
   gold = tintHits>0 ? true : (rng()<0.14);
   if(overclockLeft===0){
@@ -257,6 +264,8 @@ const QUEST_POOL=[
   {type:'chain',need:12,reward:50,label:'Reach combo 12'},
   {type:'chest',need:2,reward:30,label:'Open 2 chests'},
   {type:'rev',need:3,reward:40,label:'Reverse 3 times'},
+  {type:'split',need:1,reward:60,label:'Split the dot'},
+  {type:'splithits',need:8,reward:70,label:'Survive 8 hits split'},
   {type:'clean',need:15,reward:50,label:'15 hits, no graze'},
 ];
 function newQuest(){
@@ -291,6 +300,8 @@ function start(){
   speed=curSpeed(); nextChest = 8 + Math.floor(rng()*8);
   nextOverclock = 35 + Math.floor(rng()*10);
   revenged=false; blinkT=0; blinkOn=0; deathInfo=null; runQuests=0; shrinkHits=0;
+  lastActor=0; splitRun=0; runSplitBest=0; zen=0; vtrail=[];
+  try{ $('shields').style.opacity=1; }catch(e){}
   newQuest(); updNextGoal();
   $('score').textContent=0; $('score').style.color=''; updShields();
   newTarget(); state=S.play; $('msg').classList.add('hidden');
@@ -356,6 +367,8 @@ function openChest(){
 function loseDot(i,px,py){
   // with two dots, a bad tap costs a dot, not the run
   dots.splice(i,1);
+  lastActor=0; splitRun=0; zen=0;
+  try{ $('shields').style.opacity=1; }catch(e){}
   combo=Math.floor(combo/2); perfectStreak=0;
   popText($('combo'),'⧉ DOT LOST',1.2);
   burst(px,py,'#ff8da1',16); shake=8; ringPulse=1; flash=0.25; flashColor='255,141,161';
@@ -371,11 +384,13 @@ function tap(){
   if(state!==S.play) return;
 
   const nd=nearestDot(), dot=dots[nd.i], d=nd.d;
+  lastActor=nd.i;
   const px=CX+Math.cos(dot.ang)*R, py=CY+Math.sin(dot.ang)*R;
 
   if(d<=targetHalf){
     const frac=d/targetHalf;
-    const perfect = d <= Math.max(targetHalf*0.35, effSpeed()*0.025);
+    // perfect zone: time-floored for fairness, CAPPED at half the arc so speed can never make every tap perfect
+    const perfect = d <= Math.min(targetHalf*0.5, Math.max(targetHalf*0.3, effSpeed()*0.02));
     const wasEclipse=eclipseActive, wasComet=cometActive;
     // the palindrome rule: before the midpoint bounces you back; past it carries you on
     const beforeMid = angleDiff(targetA,dot.ang)*dot.dir > 0;
@@ -383,12 +398,15 @@ function tap(){
     if(perfect && dots.length===1){
       didSplit=true;                                      // dead centre: the dot splits in two
       dots=[{ang:dot.ang,dir:1},{ang:dot.ang,dir:-1}];
-    } else if(!perfect && beforeMid){ dot.dir*=-1; didReverse=true; reversalGlow=1; }
+      splitRun=0; try{ $('shields').style.opacity=.25; }catch(e){}
+    } else if(!perfect && beforeMid){ dot.dir*=-1; didReverse=true; reversalGlow=1;
+      beep(494,0.05,'sine',0.13); beep(349,0.1,'sine',0.13); }   // falling two-note: you turned around
     hits++; combo++; comboPeak=Math.max(comboPeak,combo); sinceShield++;
     if(tintHits>0) tintHits--;
     let gain=(perfect?2:1)*(gold?3:1)*(1+Math.floor(combo/5)*0.5);
     if(jackpotHits>0){ gain*=2; jackpotHits--; }
     if(overclockLeft>0){ gain*=2; overclockLeft--; }
+    if(dots.length>1 && !didSplit){ gain*=1.5; }          // split pay: the wager's carrot
     if(wasComet){ gain*=10; }
     gain=Math.round(gain); score+=gain;
     if(wasEclipse){ const bounty=25+combo; score+=bounty;
@@ -407,6 +425,8 @@ function tap(){
       else if(quest.type==='perfect'&&perfect) quest.got++;
       else if(quest.type==='chain') quest.got=Math.max(quest.got,combo);
       else if(quest.type==='rev'&&didReverse) quest.got++;
+      else if(quest.type==='split'&&didSplit) quest.got++;
+      else if(quest.type==='splithits'&&dots.length>1&&!didSplit) quest.got++;
       else if(quest.type==='clean') quest.got=hits-quest.start;
       updQuestHUD(); checkQuest(); }
     updNextGoal();
@@ -418,8 +438,15 @@ function tap(){
       $('score').style.color='#ffd23f';
     }
     if(recordBroken) recordHits++;
+    // split streak + zen lane
+    if(dots.length>1 && !didSplit){ splitRun++; runSplitBest=Math.max(runSplitBest,splitRun);
+      if(splitRun%5===0){ popText($('combo'),'⧉ SURVIVED ×'+splitRun,1.2); chime(880,1046); } }
+    if(frac<0.25){ zen++;
+      if(zen===3){ popText($('combo'),'☯ ZEN · +5/hit',1.15); chime(523,659); }
+      if(zen>=3){ score+=5; $('score').textContent=score; }
+    } else zen=0;
     speed = curSpeed()*exitMult(frac);                    // calm centre exits, hot edge exits
-    if(frac>0.75 && rng()<0.4){ shrinkHits=2;             // sloppy edge tap: the next two arcs tighten
+    if(frac>0.8){ shrinkHits=1;                           // deterministic: every outer-edge tap tightens the next arc
       popText($('chest'),'⌁ TIGHT ARC',1.2); beep(233,0.15,'sawtooth',0.14); }
     burst(px,py, gold?'#ffd23f':(perfect?skin().arc:'#7CFC9E'), gold?26:(perfect?16:10));
     shake=perfect?9:5; ringPulse=1; if(!wasEclipse&&!wasComet){ flash=gold?0.5:0; flashColor='255,255,255'; }
@@ -465,7 +492,6 @@ function tap(){
     burst(px,py,'#5ac8ff',10); shake=6; ringPulse=1; flash=0.22; flashColor='90,200,255';
     slowmoT=0.35; slowmoS=0.35; beep(200,0.18,'square',0.24); beep(150,0.12,'square',0.16); buzz(25);
     if(quest&&quest.type==='clean'){ quest.start=hits; quest.got=0; updQuestHUD(); }
-    if(rng()<0.4){ shrinkHits=2; popText($('chest'),'⌁ TIGHT ARC',1.2); beep(233,0.15,'sawtooth',0.14); }
     newTarget();
   } else {
     die(px,py);
@@ -509,7 +535,7 @@ function makeShareCard(){
   g.font='900 30px Segoe UI,sans-serif'; g.fillText('PALINDROME',300,54);
   g.font='900 90px Segoe UI,sans-serif'; g.fillStyle=sk.arc; g.fillText(score,300,185);
   g.font='600 20px Segoe UI,sans-serif'; g.fillStyle='#fff';
-  g.fillText(tierFor(score)+'  ·  combo ×'+(1+Math.floor(comboPeak/5)*0.5).toFixed(1),300,232);
+  g.fillText(tierFor(score)+'  ·  combo ×'+(1+Math.floor(comboPeak/5)*0.5).toFixed(1)+(runSplits?'  ·  ⧉ '+runSplits:''),300,232);
   const asc=ascRank(lifetime);
   g.font='500 15px Segoe UI,sans-serif'; g.fillStyle='rgba(255,210,63,.85)';
   g.fillText((asc>0?('ASCENSION '+asc+'  ·  '):'')+'Day '+streak+' 🔥'+(statComets?('  ·  ☄ '+statComets):''),300,262);
@@ -549,6 +575,7 @@ function finalizeDeath(){
   statChests+=runChests; statPerfects+=runPerfects; statComets+=runComets; statSplits+=runSplits;
   localStorage.pulseChests=statChests; localStorage.pulsePerfects=statPerfects;
   localStorage.pulseComets=statComets; localStorage.pulseSplits=statSplits;
+  if(runSplitBest>statSplitBest){ statSplitBest=runSplitBest; localStorage.pulseSplitBest=statSplitBest; }
   lastRunScore=score; localStorage.pulseLast=score;
   if(isBest){ best=score; localStorage.pulseBest=best; }
   let dailyLine='';
@@ -566,7 +593,7 @@ function finalizeDeath(){
   m.innerHTML=
     `<h1 class="go-head">${head}</h1>`+
     `<p class="big go-score">${score}</p>`+
-    `<p style="opacity:.6">${sub} &nbsp;·&nbsp; ${tierFor(score)} &nbsp;·&nbsp; combo peaked ×${mult}${runSplits?' &nbsp;·&nbsp; ⧉ split ×'+runSplits:''}${dailyLine}</p>`+
+    `<p style="opacity:.6">${sub} &nbsp;·&nbsp; ${tierFor(score)} &nbsp;·&nbsp; combo peaked ×${mult}${runSplits?' &nbsp;·&nbsp; ⧉ split ×'+runSplits+(runSplitBest?' (ran '+runSplitBest+' hits)':''):''}${dailyLine}</p>`+
     `<p style="opacity:.45;font-style:italic;font-size:.92em">“${epitaph(isBest)}”</p>`+
     (recordBroken?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;opacity:.85">⚡ held the record zone for ${recordHits} hits</p>`:'')+
     (runComets?`<p style="color:#8cdcff;-webkit-text-fill-color:#8cdcff;opacity:.85">☄ caught a comet</p>`:'')+
@@ -587,7 +614,7 @@ function finalizeDeath(){
   $('againBtn').onclick=e=>{ e.stopPropagation(); reset(); };
   $('shareBtn').onclick=e=>{ e.stopPropagation(); shareCard($('shareBtn')); };
   $('copyBtn').onclick=e=>{ e.stopPropagation();
-    const txt=`PALINDROME — ${score} pts · ${tierFor(score)} · combo ×${mult} 🎯 can you beat it?`;
+    const txt=`PALINDROME — ${score} pts · ${tierFor(score)} · combo ×${mult}${runSplits?' · ⧉ '+runSplits:''} 🎯 can you beat it?`;
     try{ navigator.clipboard.writeText(txt); $('copyBtn').textContent='COPIED ✓'; }catch(_){ $('copyBtn').textContent=txt; } };
 }
 
@@ -606,6 +633,9 @@ function frame(now){
   if(state===S.play){
     dots.forEach(dot=>{ dot.ang+=dot.dir*effSpeed()*dt;
       if(dot.ang>Math.PI*2)dot.ang-=Math.PI*2; if(dot.ang<0)dot.ang+=Math.PI*2; });
+    // short velocity tail, always on — direction is felt, not inferred
+    dots.forEach(dot=>vtrail.push({x:CX+Math.cos(dot.ang)*R,y:CY+Math.sin(dot.ang)*R,a:0.3}));
+    while(vtrail.length>7*dots.length) vtrail.shift();
     const dmin=Math.min(...dots.map(dot=>Math.abs(angleDiff(dot.ang,targetA))));
     const tti=dmin/effSpeed();
     while(tickIdx<TICKB.length && tti<TICKB[tickIdx]){
@@ -630,6 +660,7 @@ function frame(now){
   } else { idleT=0; idleAnim=-1; }
 
   trail.forEach(t=>{ t.a-=rdt*1.4; }); trail=trail.filter(t=>t.a>0);
+  vtrail.forEach(t=>{ t.a-=rdt*2.4; }); vtrail=vtrail.filter(t=>t.a>0);
   shake*=0.86; ringPulse*=0.90; flash*=0.88; reversalGlow*=0.90;
   particles.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=0.15; p.vx*=0.97; p.life-=rdt*1.6; });
   particles=particles.filter(p=>p.life>0);
@@ -677,6 +708,13 @@ function frame(now){
       const mx=Math.cos(targetA), my=Math.sin(targetA);
       ctx.beginPath(); ctx.moveTo(CX+mx*(R-6),CY+my*(R-6)); ctx.lineTo(CX+mx*(R+6),CY+my*(R+6)); ctx.stroke();
     }
+    // hot edges — the exit-speed map made visible
+    if(!eclipseActive && !gold && state===S.play){
+      ctx.lineCap='round'; ctx.lineWidth=(14+pArc*8)*0.6; ctx.strokeStyle='rgba(255,122,69,.4)';
+      ctx.beginPath(); ctx.arc(CX,CY,R,targetA-targetHalf,targetA-targetHalf*0.72); ctx.stroke();
+      ctx.beginPath(); ctx.arc(CX,CY,R,targetA+targetHalf*0.72,targetA+targetHalf); ctx.stroke();
+      ctx.lineCap='butt';
+    }
     if(state===S.play){
       const nm=MILESTONES.find(m=>!milestonesHit.has(m)&&m>score&&m-score<=3);
       if(nm){ ctx.font='900 '+Math.round(R*0.55)+'px Segoe UI,sans-serif'; ctx.textAlign='center';
@@ -686,15 +724,25 @@ function frame(now){
     trail.forEach(t=>{ ctx.globalAlpha=Math.max(0,t.a); ctx.fillStyle=cometActive?'#8cdcff':sk.dot;
       ctx.beginPath(); ctx.arc(t.x,t.y,cometActive?5:4,0,Math.PI*2); ctx.fill(); });
     ctx.globalAlpha=1;
+    vtrail.forEach(t=>{ ctx.globalAlpha=Math.max(0,t.a); ctx.fillStyle=sk.dot;
+      ctx.beginPath(); ctx.arc(t.x,t.y,3,0,Math.PI*2); ctx.fill(); });
+    ctx.globalAlpha=1;
+    // bracket the dot the game will judge next (two-dot clarity)
+    if(state===S.play && dots.length>1){
+      const jb=dots[nearestDot().i];
+      const bx=CX+Math.cos(jb.ang)*R, by=CY+Math.sin(jb.ang)*R;
+      ctx.globalAlpha=0.35; ctx.strokeStyle='#fff'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(bx,by,16,0,Math.PI*2); ctx.stroke(); ctx.globalAlpha=1;
+    }
     if(state===S.play && best>0 && !recordBroken && score>=best-5 && score<=best){
       const gx=CX+Math.cos(dots[0].ang+Math.PI)*R, gy=CY+Math.sin(dots[0].ang+Math.PI)*R;
       ctx.globalAlpha=0.28; ctx.fillStyle='#ffd23f';
       ctx.beginPath(); ctx.arc(gx,gy,7,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
     }
-    dots.forEach(dot=>{
+    dots.forEach((dot,i)=>{
       const d=Math.abs(angleDiff(dot.ang,targetA)), p=Math.max(0,1-d/0.6);
       const dx=CX+Math.cos(dot.ang)*R, dy=CY+Math.sin(dot.ang)*R;
-      ctx.fillStyle=cometActive?'#8cdcff':sk.dot; ctx.shadowColor=ctx.fillStyle; ctx.shadowBlur=blur(14+p*26);
+      ctx.fillStyle=cometActive?'#8cdcff':(i===1?sk.arc:sk.dot); ctx.shadowColor=ctx.fillStyle; ctx.shadowBlur=blur(14+p*26);
       ctx.beginPath(); ctx.arc(dx,dy,(cometActive?12:9)+p*6,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
       if(blinkOn>0 && !cometActive && state===S.play){
         ctx.fillStyle='#0a0a12'; ctx.beginPath(); ctx.arc(dx+3,dy-3,7+p*4,0,Math.PI*2); ctx.fill(); }
