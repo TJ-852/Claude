@@ -1,7 +1,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <meta name="disabled-adaptations" content="watch">
-<title>PULSE</title>
+<title>Palindrome</title>
 <style>
   html,body{margin:0;height:100%;background:#0a0a12;overflow:hidden;
     font-family:'Segoe UI',system-ui,sans-serif;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
@@ -29,7 +29,7 @@
   #msg{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
     justify-content:center;color:#fff;text-align:center;z-index:10;
     background:rgba(10,10,18,.72);backdrop-filter:blur(3px);padding:20px;box-sizing:border-box;overflow-y:auto}
-  #msg h1{font-size:58px;margin:0;font-weight:900;letter-spacing:6px;
+  #msg h1{font-size:46px;margin:0;font-weight:900;letter-spacing:5px;
     background:linear-gradient(90deg,#5ac8ff,#ffd23f);-webkit-background-clip:text;
     background-clip:text;color:transparent}
   #msg p{opacity:.7;font-size:15px;letter-spacing:1px;margin:11px 0 0}
@@ -49,7 +49,6 @@
   .hidden{display:none!important}
   .lock{opacity:.4}
   .on{border-color:#ffd23f!important;color:#ffd23f}
-  /* Apple Watch & other tiny screens (paired with disabled-adaptations meta) */
   @media (max-width:290px){
     #hud{padding:8px 10px}
     .score{font-size:24px}.sub{font-size:8px;letter-spacing:1px;margin-top:2px}
@@ -60,7 +59,7 @@
     #mode{font-size:7px;top:4px;letter-spacing:1px}
     #combo{font-size:13px}#milestone{font-size:18px;letter-spacing:2px}#chest{font-size:11px}
     #msg{padding:8px;justify-content:flex-start}
-    #msg h1{font-size:24px;letter-spacing:2px}
+    #msg h1{font-size:20px;letter-spacing:2px}
     #msg p{font-size:9px;margin:4px 0 0;letter-spacing:.5px}
     #msg .big{font-size:11px;margin-top:6px}
     .go-head{font-size:16px !important;letter-spacing:1px !important}
@@ -83,27 +82,27 @@
 <div id="milestone"></div>
 <div id="chest"></div>
 <div id="msg">
-  <h1>PULSE</h1>
-  <p>Tap when the dot crosses the <b style="color:#5ac8ff">glowing arc</b></p>
-  <p style="opacity:.5;font-size:13px">Rising ticks = the strike is near · near-miss spends a <b style="color:#5ac8ff">shield</b> 🛡 · a <b style="color:#ffd23f">tinted ring</b> warns of a reversal</p>
+  <h1>PALINDROME</h1>
+  <p>Tap inside the <b style="color:#5ac8ff">glowing arc</b> — an <b>early</b> tap bounces you back, a <b>late</b> tap carries you on</p>
+  <p style="opacity:.5;font-size:13px">Dead-centre <b style="color:#ffd23f">SPLITS</b> the dot in two · centre taps leave calm, edge taps leave hot · a near-miss spends a <b style="color:#5ac8ff">shield</b> 🛡</p>
   <div id="meta"></div>
   <div class="row" data-ui><button data-ui id="dailyBtn">DAILY RUN</button></div>
   <div class="row" id="skinrow" data-ui></div>
   <p class="big" id="mtip">Tap / Space to start</p>
-  <div class="pill">ONE TAP · DON'T MISS</div>
+  <div class="pill">ONE TAP · WRITE IT BACKWARDS</div>
 </div>
 
 <script>
 const cv=document.getElementById('c'), ctx=cv.getContext('2d');
 const $=id=>document.getElementById(id);
-const TINY=Math.min(window.innerWidth,window.innerHeight)<=290; // Apple Watch class devices
+const TINY=Math.min(window.innerWidth,window.innerHeight)<=290;
 let W,H,CX,CY,R;
 function resize(){ const s=Math.min(window.innerWidth,window.innerHeight);
   W=cv.width=window.innerWidth; H=cv.height=window.innerHeight; CX=W/2; CY=H*(TINY?0.5:0.46); R=s*(TINY?0.36:0.30); }
 window.addEventListener('resize',resize); resize();
-function blur(v){ return TINY?v*0.35:v; } // shadowBlur is costly on watch-class GPUs
+function blur(v){ return TINY?v*0.35:v; }
 
-// ---- audio ----
+// ---- audio / haptics ----
 let AC;
 function beep(freq,dur=0.08,type='sine',vol=0.25){
   try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)();
@@ -114,7 +113,7 @@ function beep(freq,dur=0.08,type='sine',vol=0.25){
   }catch(e){}
 }
 function chime(f1,f2){ beep(f1,0.10,'sine',0.22); beep(f2,0.16,'sine',0.15); }
-function buzz(p){ try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){} } // haptics where supported
+function buzz(p){ try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){} }
 
 // ---- deterministic RNG (daily seeded runs) ----
 function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0;
@@ -127,7 +126,7 @@ function dailySeed(){ const s=todayStr(); let h=2166136261;
   for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
 function dailyBestToday(){ return +(localStorage['pulseDaily_'+todayStr()]||0); }
 
-// ---- progression / cosmetics ----
+// ---- progression / cosmetics (storage keys keep the legacy "pulse" prefix so progress survives the rename) ----
 const SKINS=[
   {name:'Classic',  dot:'#ffffff',arc:'#5ac8ff',unlock:0},
   {name:'Ember',    dot:'#ffd7a1',arc:'#ff7a45',unlock:25},
@@ -135,7 +134,7 @@ const SKINS=[
   {name:'Violet',   dot:'#f0d7ff',arc:'#b46bff',unlock:120},
   {name:'Solar',    dot:'#fff4c2',arc:'#ffd23f',unlock:250},
   {name:'Ascendant',dot:'#c8fff4',arc:'#00ffd0',unlock:0,asc:1},
-  {name:'Phantom',  dot:'#10131f',arc:'#f5f7ff',unlock:0,secret:true}, // hidden: 3 lifetime perfects on a reversal
+  {name:'Phantom',  dot:'#10131f',arc:'#f5f7ff',unlock:0,secret:true}, // hidden: 3 lifetime perfects while split
 ];
 function tierFor(s){ return s>=250?'LEGEND':s>=120?'SNIPER':s>=60?'MARKSMAN':s>=25?'SHARPSHOOTER':s>=10?'ROOKIE':'NOVICE'; }
 const ASC=[500,1000,2000,4000,8000,16000];
@@ -149,7 +148,8 @@ let streak=+(localStorage.pulseStreak||0);
 let statChests=+(localStorage.pulseChests||0);
 let statPerfects=+(localStorage.pulsePerfects||0);
 let statComets=+(localStorage.pulseComets||0);
-let revPerfects=+(localStorage.pulseRevPerfects||0);
+let statSplits=+(localStorage.pulseSplits||0);
+let revPerfects=+(localStorage.pulseRevPerfects||0); // now counts perfects landed while split
 let questsDone=+(localStorage.pulseQuests||0);
 let lastRunScore=+(localStorage.pulseLast||0);
 let skinIdx=Math.min(SKINS.length-1,+(localStorage.pulseSkin||0));
@@ -172,7 +172,7 @@ function refreshMeta(){
     (asc>0?` &nbsp;·&nbsp; <b style="color:#ffd23f">Ascension ${asc}</b>`:'') +
     (next?`<br><span style="opacity:.55;font-size:.92em">${next-lifetime} lifetime pts to Ascension ${asc+1}${ascPerkHint(asc+1)}</span>`:'<br><span style="opacity:.55;font-size:.92em">Max ascension reached</span>') +
     (dailyBestToday()?`<br><span style="opacity:.55;font-size:.92em">Today's daily best: <b>${dailyBestToday()}</b></span>`:'') +
-    `<br><span style="opacity:.45;font-size:.92em">📦 ${statChests} · 🎯 ${statPerfects} · ◆ ${questsDone}${statComets?' · ☄ '+statComets:''}</span>`;
+    `<br><span style="opacity:.45;font-size:.92em">📦 ${statChests} · 🎯 ${statPerfects} · ◆ ${questsDone} · ⧉ ${statSplits}${statComets?' · ☄ '+statComets:''}</span>`;
 }
 function ascPerkHint(r){ return r===1?' (skin)':r===2?' (+1 start shield)':r===3?' (dot trail)':''; }
 function renderSkinRow(){
@@ -196,25 +196,22 @@ const S={menu:0,play:1,dying:2,dead:3};
 let state=S.menu;
 let score=0,combo=0,hits=0,shields=2,comboPeak=0;
 let perfectStreak=0,sinceShield=0,jackpotHits=0,phase=0;
-let runChests=0,runPerfects=0,runComets=0;
-let ang=0,dir=1,speed=0,targetA=0,targetHalf=0.42,gold=false,pendingRev=false;
+let runChests=0,runPerfects=0,runComets=0,runSplits=0;
+let dots=[{ang:-Math.PI/2,dir:1}];            // the palindrome: tap placement writes each dot's direction
+let speed=0,targetA=0,targetHalf=0.42,gold=false;
 let shake=0,ringPulse=0,flash=0,flashColor='255,255,255',reversalGlow=0;
 let dyingT=0,timeScale=1,slowmoT=0,slowmoS=1,hbT=0,tintHits=0,nextChest=0;
 let tickIdx=0;
 let particles=[],shocks=[],trail=[];
 const milestonesHit=new Set();
-// surprise events — at most one live at a time
 let eclipseUsed=false,eclipseActive=false;
 let cometUsed=false,cometActive=false;
 let overclockLeft=0,nextOverclock=0;
 let recordBroken=false,recordHits=0;
 let palindromesSeen=new Set();
-// quests, revenge, blink, melody
 let quest=null,qrng=Math.random,runQuests=0,revenged=false;
 let blinkT=0,blinkNext=7,blinkOn=0,deathInfo=null;
-const NOTES=[262,294,330,392,440,523,587,659,784,880]; // C pentatonic, two octaves — combos compose a melody
-// idle personality
-let idleT=0,idleAnim=-1,idleAnimT=0,idleLast=-1;
+const NOTES=[262,294,330,392,440,523,587,659,784,880];
 const TICKB=[0.28,0.20,0.13,0.07], TICKF=[470,600,760,950];
 
 function rand(a,b){ return a+Math.random()*(b-a); }
@@ -222,16 +219,20 @@ function angleDiff(a,b){ let d=(a-b)%(Math.PI*2); if(d>Math.PI)d-=Math.PI*2; if(
 function curSpeed(){ return 2.1 + (6.2-2.1)*(1-Math.exp(-hits/55)) + Math.max(0,hits-60)*0.004; }
 function curHalf(){ return 0.13 + 0.29*Math.exp(-hits/120); }
 function effSpeed(){ return speed*(overclockLeft>0?1.6:1); }
+function exitMult(frac){ return Math.min(1.6, Math.max(0.55, 1.6*frac)); } // exit speed ∝ distance from midpoint
+function nearestDot(){ let bi=0,bd=1e9;
+  dots.forEach((dt,i)=>{ const d=Math.abs(angleDiff(dt.ang,targetA)); if(d<bd){ bd=d; bi=i; } });
+  return {i:bi,d:bd}; }
 
-function newTarget(keepRev){
-  eclipseActive=false; cometActive=false;          // single-target events end here
+function newTarget(){
+  eclipseActive=false; cometActive=false;
   const gap=Math.min(Math.PI*0.85, Math.max(0.9, effSpeed()*0.22));
-  let a; do { a=rng()*Math.PI*2; } while (Math.abs(angleDiff(a,ang))<gap);
+  let a=0;
+  for(let t=0;t<40;t++){ a=rng()*Math.PI*2;
+    if(dots.every(dt=>Math.abs(angleDiff(a,dt.ang))>=gap)) break; }
   targetA=a;
-  targetHalf=curHalf()*(overclockLeft>0?1.5:1)*(TINY?1.15:1); // wider windows on watch — a finger covers the screen
+  targetHalf=curHalf()*(overclockLeft>0?1.5:1)*(TINY?1.15:1);
   gold = tintHits>0 ? true : (rng()<0.14);
-  if(!keepRev) pendingRev = pendingRev ? false : (rng()<0.25);
-  // roll surprise events (one at a time, each honors its own gate)
   if(overclockLeft===0){
     if(!eclipseUsed && hits>=30 && rng()<0.008){
       eclipseActive=true; eclipseUsed=true; gold=false;
@@ -249,18 +250,43 @@ function newTarget(keepRev){
   tickIdx=0;
 }
 
+const QUEST_POOL=[
+  {type:'gold',need:3,reward:40,label:'Hit 3 gold arcs'},
+  {type:'perfect',need:4,reward:40,label:'Land 4 perfects'},
+  {type:'chain',need:12,reward:50,label:'Reach combo 12'},
+  {type:'chest',need:2,reward:30,label:'Open 2 chests'},
+  {type:'rev',need:3,reward:40,label:'Reverse 3 times'},
+  {type:'clean',need:15,reward:50,label:'15 hits, no graze'},
+];
+function newQuest(){
+  const q=QUEST_POOL[Math.floor(qrng()*QUEST_POOL.length)];
+  quest={...q,got:0,start:hits}; updQuestHUD();
+}
+function updQuestHUD(){ const el=$('quest'); if(!el) return;
+  el.textContent = quest ? '◆ '+quest.label+' · '+Math.min(quest.got,quest.need)+'/'+quest.need : ''; }
+function checkQuest(){
+  if(!quest||quest.got<quest.need) return;
+  score+=quest.reward; $('score').textContent=score;
+  questsDone++; runQuests++; localStorage.pulseQuests=questsDone;
+  popText($('combo'),'◆ QUEST · +'+quest.reward,1.25); chime(988,1319); buzz(15);
+  newQuest(); updNextGoal();
+}
+function updNextGoal(){ const el=$('nextgoal'); if(!el) return;
+  const nm=MILESTONES.find(m=>m>score);
+  el.textContent = nm ? ('NEXT '+nm+' · −'+(nm-score)) : ''; }
+
 function start(){
   score=0; combo=0; hits=0; comboPeak=0;
   perfectStreak=0; sinceShield=0; jackpotHits=0; phase=0;
-  runChests=0; runPerfects=0; runComets=0;
+  runChests=0; runPerfects=0; runComets=0; runSplits=0;
   eclipseUsed=false; eclipseActive=false; cometUsed=false; cometActive=false;
   overclockLeft=0; recordBroken=false; recordHits=0; palindromesSeen.clear();
   shields = ascRank(lifetime)>=2 ? 3 : 2;
-  ang=-Math.PI/2; dir=1; particles=[]; shocks=[]; trail=[];
-  dyingT=0; timeScale=1; slowmoT=0; hbT=0; tintHits=0; pendingRev=false;
+  dots=[{ang:-Math.PI/2,dir:1}]; particles=[]; shocks=[]; trail=[];
+  dyingT=0; timeScale=1; slowmoT=0; hbT=0; tintHits=0;
   milestonesHit.clear();
   rng = dailyMode ? mulberry32(dailySeed()) : Math.random;
-  qrng = dailyMode ? mulberry32(dailySeed()^0x5bd1e995) : Math.random; // daily quests are everyone's quests
+  qrng = dailyMode ? mulberry32(dailySeed()^0x5bd1e995) : Math.random;
   speed=curSpeed(); nextChest = 8 + Math.floor(rng()*8);
   nextOverclock = 35 + Math.floor(rng()*10);
   revenged=false; blinkT=0; blinkOn=0; deathInfo=null; runQuests=0;
@@ -283,7 +309,7 @@ function bumpStreak(){
 function burst(x,y,color,n){ if(TINY) n=Math.ceil(n/2);
   for(let i=0;i<n;i++){ const a=rand(0,Math.PI*2),sp=rand(1.5,7);
     particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,color,r:rand(2,5)}); } }
-function ringBurst(color){ const n=TINY?20:40;                    // supernova: shards along the whole ring
+function ringBurst(color){ const n=TINY?20:40;
   for(let i=0;i<n;i++){ const a=i/n*Math.PI*2, sp=rand(2,6);
     particles.push({x:CX+Math.cos(a)*R,y:CY+Math.sin(a)*R,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1.2,color,r:rand(2,4)}); } }
 function shockwave(x,y,color){ shocks.push({x,y,r:R*0.12,a:0.9,color}); }
@@ -302,13 +328,14 @@ function checkPalindrome(){
   const s=String(score);
   const pal = s===[...s].reverse().join(''), rep = /^(\d)\1+$/.test(s);
   if(pal||rep){ palindromesSeen.add(score);
-    popText($('chest'), score===404?'✦ SCORE NOT FOUND ✦':'✨ '+score+' ✨',1.2);
+    popText($('chest'), score===404?'✦ SCORE NOT FOUND ✦':'✦ PALINDROME '+score+' ✦',1.25);
     beep(660,0.07,'sine',0.16); beep(880,0.09,'sine',0.14); }
 }
 
 function openChest(){
-  const px=CX+Math.cos(ang)*R, py=CY+Math.sin(ang)*R;
-  const lucky = dailyMode && runChests===0;                       // daily's first chest is generous
+  const anchor=dots[0];
+  const px=CX+Math.cos(anchor.ang)*R, py=CY+Math.sin(anchor.ang)*R;
+  const lucky = dailyMode && runChests===0;
   const jp = lucky?0.15:0.05;
   const roll=rng(); let txt;
   if(roll<jp){ jackpotHits=10; txt=lucky?'✦ LUCKY DAY · JACKPOT ×2':'✦ JACKPOT · ×2 FOR 10 HITS'; }
@@ -325,30 +352,16 @@ function openChest(){
   nextChest = hits + 8 + Math.floor(rng()*8);
 }
 
-const QUEST_POOL=[
-  {type:'gold',need:3,reward:40,label:'Hit 3 gold arcs'},
-  {type:'perfect',need:4,reward:40,label:'Land 4 perfects'},
-  {type:'chain',need:12,reward:50,label:'Reach combo 12'},
-  {type:'chest',need:2,reward:30,label:'Open 2 chests'},
-  {type:'rev',need:3,reward:40,label:'Ride 3 reversals'},
-  {type:'clean',need:15,reward:50,label:'15 hits, no graze'},
-];
-function newQuest(){
-  const q=QUEST_POOL[Math.floor(qrng()*QUEST_POOL.length)];
-  quest={...q,got:0,start:hits}; updQuestHUD();
+function loseDot(i,px,py){
+  // with two dots, a bad tap costs a dot, not the run
+  dots.splice(i,1);
+  combo=Math.floor(combo/2); perfectStreak=0;
+  popText($('combo'),'⧉ DOT LOST',1.2);
+  burst(px,py,'#ff8da1',16); shake=8; ringPulse=1; flash=0.25; flashColor='255,141,161';
+  slowmoT=0.3; slowmoS=0.3; beep(220,0.2,'square',0.24); beep(165,0.15,'square',0.16); buzz(25);
+  if(quest&&quest.type==='clean'){ quest.start=hits; quest.got=0; updQuestHUD(); }
+  newTarget();
 }
-function updQuestHUD(){ const el=$('quest'); if(!el) return;
-  el.textContent = quest ? '◆ '+quest.label+' · '+Math.min(quest.got,quest.need)+'/'+quest.need : ''; }
-function checkQuest(){
-  if(!quest||quest.got<quest.need) return;
-  score+=quest.reward; $('score').textContent=score;
-  questsDone++; runQuests++; localStorage.pulseQuests=questsDone;
-  popText($('combo'),'◆ QUEST · +'+quest.reward,1.25); chime(988,1319); buzz(15);
-  newQuest(); updNextGoal();
-}
-function updNextGoal(){ const el=$('nextgoal'); if(!el) return;
-  const nm=MILESTONES.find(m=>m>score);
-  el.textContent = nm ? ('NEXT '+nm+' · −'+(nm-score)) : ''; }
 
 function tap(){
   if(state===S.menu){ start(); return; }
@@ -356,12 +369,20 @@ function tap(){
   if(state===S.dying) return;
   if(state!==S.play) return;
 
-  const d=Math.abs(angleDiff(ang,targetA));
-  const px=CX+Math.cos(ang)*R, py=CY+Math.sin(ang)*R;
+  const nd=nearestDot(), dot=dots[nd.i], d=nd.d;
+  const px=CX+Math.cos(dot.ang)*R, py=CY+Math.sin(dot.ang)*R;
 
   if(d<=targetHalf){
+    const frac=d/targetHalf;
     const perfect = d <= Math.max(targetHalf*0.35, effSpeed()*0.025);
-    const wasEclipse=eclipseActive, wasComet=cometActive, wasRev=pendingRev;
+    const wasEclipse=eclipseActive, wasComet=cometActive;
+    // the palindrome rule: before the midpoint bounces you back; past it carries you on
+    const beforeMid = angleDiff(targetA,dot.ang)*dot.dir > 0;
+    let didReverse=false, didSplit=false;
+    if(perfect && dots.length===1){
+      didSplit=true;                                      // dead centre: the dot splits in two
+      dots=[{ang:dot.ang,dir:1},{ang:dot.ang,dir:-1}];
+    } else if(!perfect && beforeMid){ dot.dir*=-1; didReverse=true; reversalGlow=1; }
     hits++; combo++; comboPeak=Math.max(comboPeak,combo); sinceShield++;
     if(tintHits>0) tintHits--;
     let gain=(perfect?2:1)*(gold?3:1)*(1+Math.floor(combo/5)*0.5);
@@ -369,7 +390,7 @@ function tap(){
     if(overclockLeft>0){ gain*=2; overclockLeft--; }
     if(wasComet){ gain*=10; }
     gain=Math.round(gain); score+=gain;
-    if(wasEclipse){ const bounty=25+combo; score+=bounty;         // the sun returns
+    if(wasEclipse){ const bounty=25+combo; score+=bounty;
       popText($('chest'),'☀ +'+(gain+bounty),1.4);
       flash=0.9; flashColor='255,255,240'; chime(523,659); beep(784,0.3,'sine',0.2); }
     if(wasComet){ runComets++;
@@ -377,50 +398,53 @@ function tap(){
       burst(px,py,'#ffd23f',40); flash=0.6; flashColor='140,220,255';
       chime(523,784); beep(1046,0.25,'sine',0.2); }
     $('score').textContent=score;
-    // revenge — your last run is a rival
     if(!revenged && lastRunScore>=10 && score>lastRunScore && best!==lastRunScore){
       revenged=true; score+=10; $('score').textContent=score;
       popText($('combo'),'⚔ REVENGED · +10',1.2); beep(587,0.1,'sine',0.2); beep(880,0.14,'sine',0.18); buzz(15); }
-    // quest progress
     if(quest){
       if(quest.type==='gold'&&gold) quest.got++;
       else if(quest.type==='perfect'&&perfect) quest.got++;
       else if(quest.type==='chain') quest.got=Math.max(quest.got,combo);
-      else if(quest.type==='rev'&&wasRev) quest.got++;
+      else if(quest.type==='rev'&&didReverse) quest.got++;
       else if(quest.type==='clean') quest.got=hits-quest.start;
       updQuestHUD(); checkQuest(); }
     updNextGoal();
-    // record theater — break your best mid-run and play inside the record
     if(!recordBroken && best>0 && score>best){
       recordBroken=true; slowmoT=0.3; slowmoS=0.3;
       popText($('milestone'),'RECORD ⚡',1.5);
-      burst(CX+Math.cos(ang+Math.PI)*R, CY+Math.sin(ang+Math.PI)*R, '#ffd23f', 26); // the ghost dissolves
+      burst(CX+Math.cos(dot.ang+Math.PI)*R, CY+Math.sin(dot.ang+Math.PI)*R, '#ffd23f', 26);
       flash=0.5; flashColor='255,210,63'; chime(1318,1568);
       $('score').style.color='#ffd23f';
     }
     if(recordBroken) recordHits++;
-    speed=curSpeed();
-    if(pendingRev){ dir*=-1; reversalGlow=1; beep(300,0.12,'sine',0.18); }
+    speed = curSpeed()*exitMult(frac);                    // calm centre exits, hot edge exits
     burst(px,py, gold?'#ffd23f':(perfect?skin().arc:'#7CFC9E'), gold?26:(perfect?16:10));
     shake=perfect?9:5; ringPulse=1; if(!wasEclipse&&!wasComet){ flash=gold?0.5:0; flashColor='255,255,255'; }
+    if(didSplit){
+      runSplits++;
+      popText($('milestone'),'⧉ SPLIT',1.5);
+      shockwave(px,py,skin().arc); shockwave(px,py,'#ffd23f');
+      slowmoT=0.18; slowmoS=0.1; flash=0.4; flashColor='255,255,255';
+      chime(659,988); beep(1319,0.2,'sine',0.18); buzz([15,30,15,30,15]);
+    }
     if(perfect){
       perfectStreak++; runPerfects++; buzz([12,30,12]);
-      if(wasRev){ revPerfects++; localStorage.pulseRevPerfects=revPerfects;    // the hidden road to Phantom
+      if(dots.length===2 && !didSplit){                   // the hidden road to Phantom
+        revPerfects++; localStorage.pulseRevPerfects=revPerfects;
         if(revPerfects>=3 && localStorage.pulsePhantom!=='1'){
           localStorage.pulsePhantom='1';
           popText($('milestone'),'??? → PHANTOM FOUND',1.4); chime(1046,1568); renderSkinRow(); } }
-      if(perfectStreak>=8){                                        // FLAWLESS supernova
+      if(perfectStreak>=8){
         perfectStreak=0;
         slowmoT=0.22; slowmoS=0.04;
         popText($('milestone'),'FLAWLESS',1.6);
         ringBurst(skin().arc); shockwave(px,py,skin().arc);
         flash=0.5; flashColor='255,255,255'; chime(1568,2093);
-      } else {
+      } else if(!didSplit){
         shockwave(px,py,skin().arc); slowmoT=0.07; slowmoS=0.05;
         chime(784+perfectStreak*40, 1046+perfectStreak*40);
       }
     } else { perfectStreak=0; buzz(8);
-      // each hit plays the next note of a pentatonic ladder — combos become melodies
       if(gold) beep(880+combo*6,0.09,'triangle',0.28);
       else beep(NOTES[Math.min(combo-1,NOTES.length-1)],0.1,'triangle',0.26); }
     if(combo>0&&combo%5===0){ popText($('combo'),'COMBO ×'+(1+Math.floor(combo/5)*0.5),1.25); beep(990,0.14,'sine',0.2); }
@@ -431,12 +455,14 @@ function tap(){
       flash=0.45; flashColor=hexToRgb(PHASE_COLS[phase%PHASE_COLS.length]); chime(1174,1568); }
     checkMilestone(); checkPalindrome();
     newTarget();
+  } else if(dots.length>1){
+    loseDot(nd.i,px,py);
   } else if(d<=targetHalf*1.4 && shields>0){
     shields--; updShields(); combo=Math.floor(combo/2); perfectStreak=0;
     burst(px,py,'#5ac8ff',10); shake=6; ringPulse=1; flash=0.22; flashColor='90,200,255';
     slowmoT=0.35; slowmoS=0.35; beep(200,0.18,'square',0.24); beep(150,0.12,'square',0.16); buzz(25);
     if(quest&&quest.type==='clean'){ quest.start=hits; quest.got=0; updQuestHUD(); }
-    newTarget(true);
+    newTarget();
   } else {
     die(px,py);
   }
@@ -444,7 +470,7 @@ function tap(){
 
 function die(px,py){ state=S.dying; dyingT=0; shake=18; flash=0.7; flashColor='255,77,109';
   deathInfo={over:overclockLeft>0,gold,shieldsLeft:shields,ecl:eclipseActive,hits};
-  if(best>0&&score>best){ popText($('milestone'),'NEW BEST',1.6);          // confetti before the card
+  if(best>0&&score>best){ popText($('milestone'),'NEW BEST',1.6);
     for(let i=0;i<4;i++) burst(CX+rand(-R,R)*0.7, CY+rand(-R,R)*0.7,
       PHASE_COLS[Math.floor(Math.random()*PHASE_COLS.length)], 16); }
   burst(px||CX,py||CY,'#ff4d6d',34); beep(160,0.35,'sawtooth',0.3); buzz([40,60,40]); }
@@ -458,7 +484,7 @@ function epitaph(isBest){
   if(di.gold) return 'Greed is a hell of a drug.';
   if((di.hits||0)<5) return 'Warming up. Surely.';
   if(di.shieldsLeft>0) return 'Fell with '+di.shieldsLeft+' shield'+(di.shieldsLeft>1?'s':'')+' still in pocket.';
-  const pool=['The ring remembers.','Rhythm is a harsh mistress.','The dot waits for no one.','So close to greatness.'];
+  const pool=['The ring remembers.','Rhythm is a harsh mistress.','The dot waits for no one.','It reads the same backwards.'];
   return pool[Math.floor(Math.random()*pool.length)];
 }
 
@@ -474,8 +500,9 @@ function makeShareCard(){
   g.strokeStyle=sk.arc; g.lineWidth=8; g.shadowColor=sk.arc; g.shadowBlur=30;
   g.beginPath(); g.arc(300,150,95,-0.5,1.7); g.stroke(); g.shadowBlur=0;
   g.fillStyle=sk.dot; g.beginPath(); g.arc(300+Math.cos(1.7)*95,150+Math.sin(1.7)*95,10,0,7); g.fill();
+  g.beginPath(); g.arc(300+Math.cos(-0.5)*95,150+Math.sin(-0.5)*95,10,0,7); g.fill(); // two dots — the split
   g.textAlign='center'; g.fillStyle='#fff';
-  g.font='900 34px Segoe UI,sans-serif'; g.fillText('P U L S E',300,54);
+  g.font='900 30px Segoe UI,sans-serif'; g.fillText('PALINDROME',300,54);
   g.font='900 90px Segoe UI,sans-serif'; g.fillStyle=sk.arc; g.fillText(score,300,185);
   g.font='600 20px Segoe UI,sans-serif'; g.fillStyle='#fff';
   g.fillText(tierFor(score)+'  ·  combo ×'+(1+Math.floor(comboPeak/5)*0.5).toFixed(1),300,232);
@@ -499,10 +526,10 @@ function shareCard(btn){
     (async()=>{
       try{
         const dl = (window.claude&&window.claude.use) ? await window.claude.use('downloads') : null;
-        if(dl){ await dl.save({filename:'pulse-'+score+'.png', data:blob}); btn.textContent='CARD SAVED ✓'; return; }
-      }catch(e){ if(e&&e.code==='declined'){ return; } }       // viewer said no — not an error
+        if(dl){ await dl.save({filename:'palindrome-'+score+'.png', data:blob}); btn.textContent='CARD SAVED ✓'; return; }
+      }catch(e){ if(e&&e.code==='declined'){ return; } }
       const a=document.createElement('a');
-      a.href=URL.createObjectURL(blob); a.download='pulse-'+score+'.png'; a.click(); btn.textContent='CARD SAVED ✓';
+      a.href=URL.createObjectURL(blob); a.download='palindrome-'+score+'.png'; a.click(); btn.textContent='CARD SAVED ✓';
     })();
   }
 }
@@ -515,9 +542,10 @@ function finalizeDeath(){
   lifetime += score*(dailyMode?2:1);
   localStorage.pulseLifetime=lifetime;
   const ascNow=ascRank(lifetime);
-  statChests+=runChests; statPerfects+=runPerfects; statComets+=runComets;
-  localStorage.pulseChests=statChests; localStorage.pulsePerfects=statPerfects; localStorage.pulseComets=statComets;
-  lastRunScore=score; localStorage.pulseLast=score;                        // next run's rival
+  statChests+=runChests; statPerfects+=runPerfects; statComets+=runComets; statSplits+=runSplits;
+  localStorage.pulseChests=statChests; localStorage.pulsePerfects=statPerfects;
+  localStorage.pulseComets=statComets; localStorage.pulseSplits=statSplits;
+  lastRunScore=score; localStorage.pulseLast=score;
   if(isBest){ best=score; localStorage.pulseBest=best; }
   let dailyLine='';
   if(dailyMode){ const dk='pulseDaily_'+todayStr();
@@ -534,13 +562,13 @@ function finalizeDeath(){
   m.innerHTML=
     `<h1 class="go-head">${head}</h1>`+
     `<p class="big go-score">${score}</p>`+
-    `<p style="opacity:.6">${sub} &nbsp;·&nbsp; ${tierFor(score)} &nbsp;·&nbsp; combo peaked ×${mult}${dailyLine}</p>`+
+    `<p style="opacity:.6">${sub} &nbsp;·&nbsp; ${tierFor(score)} &nbsp;·&nbsp; combo peaked ×${mult}${runSplits?' &nbsp;·&nbsp; ⧉ split ×'+runSplits:''}${dailyLine}</p>`+
     `<p style="opacity:.45;font-style:italic;font-size:.92em">“${epitaph(isBest)}”</p>`+
     (recordBroken?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;opacity:.85">⚡ held the record zone for ${recordHits} hits</p>`:'')+
     (runComets?`<p style="color:#8cdcff;-webkit-text-fill-color:#8cdcff;opacity:.85">☄ caught a comet</p>`:'')+
     (justUnlocked.length?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;margin-top:12px">✦ SKIN UNLOCKED: ${justUnlocked.join(', ')}</p>`:'')+
     (ascNow>ascBefore?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;margin-top:10px">✦ ASCENSION ${ascNow} REACHED${ascPerkHint(ascNow)}</p>`:'')+
-    `<p style="opacity:.5;font-size:.9em;margin-top:12px">🔥 Day ${streak} &nbsp;·&nbsp; Lifetime ${lifetime} &nbsp;·&nbsp; 📦 ${statChests} &nbsp;·&nbsp; 🎯 ${statPerfects} &nbsp;·&nbsp; ◆ ${questsDone}${statComets?' &nbsp;·&nbsp; ☄ '+statComets:''}</p>`+
+    `<p style="opacity:.5;font-size:.9em;margin-top:12px">🔥 Day ${streak} &nbsp;·&nbsp; Lifetime ${lifetime} &nbsp;·&nbsp; 📦 ${statChests} &nbsp;·&nbsp; 🎯 ${statPerfects} &nbsp;·&nbsp; ◆ ${questsDone} &nbsp;·&nbsp; ⧉ ${statSplits}${statComets?' &nbsp;·&nbsp; ☄ '+statComets:''}</p>`+
     `<div class="row" data-ui>`+
       `<button data-ui id="shareBtn">SHARE CARD</button>`+
       `<button data-ui id="copyBtn">COPY TEXT</button>`+
@@ -555,7 +583,7 @@ function finalizeDeath(){
   $('againBtn').onclick=e=>{ e.stopPropagation(); reset(); };
   $('shareBtn').onclick=e=>{ e.stopPropagation(); shareCard($('shareBtn')); };
   $('copyBtn').onclick=e=>{ e.stopPropagation();
-    const txt=`PULSE — ${score} pts · ${tierFor(score)} · combo ×${mult} 🎯 can you beat it?`;
+    const txt=`PALINDROME — ${score} pts · ${tierFor(score)} · combo ×${mult} 🎯 can you beat it?`;
     try{ navigator.clipboard.writeText(txt); $('copyBtn').textContent='COPIED ✓'; }catch(_){ $('copyBtn').textContent=txt; } };
 }
 
@@ -572,23 +600,23 @@ function frame(now){
   const dt=rdt*timeScale;
 
   if(state===S.play){
-    ang+=dir*effSpeed()*dt; if(ang>Math.PI*2)ang-=Math.PI*2; if(ang<0)ang+=Math.PI*2;
-    const d=Math.abs(angleDiff(ang,targetA));
-    const tti=d/effSpeed();
+    dots.forEach(dot=>{ dot.ang+=dot.dir*effSpeed()*dt;
+      if(dot.ang>Math.PI*2)dot.ang-=Math.PI*2; if(dot.ang<0)dot.ang+=Math.PI*2; });
+    const dmin=Math.min(...dots.map(dot=>Math.abs(angleDiff(dot.ang,targetA))));
+    const tti=dmin/effSpeed();
     while(tickIdx<TICKB.length && tti<TICKB[tickIdx]){
-      beep(TICKF[tickIdx],0.035,'sine',(eclipseActive?0.02:0.06)+tickIdx*0.012); tickIdx++; } // whispered in the dark
+      beep(TICKF[tickIdx],0.035,'sine',(eclipseActive?0.02:0.06)+tickIdx*0.012); tickIdx++; }
     if(tti>0.4) tickIdx=0;
     if(!eclipseActive){ hbT+=rdt; const beatT=Math.max(0.30,0.85-(speed-2.1)*0.08);
-      if(hbT>=beatT){ hbT=0; beep(120,0.09,'sine',0.06); beep(96,0.12,'sine',0.05); } } // the heartbeat stops during an eclipse
+      if(hbT>=beatT){ hbT=0; beep(120,0.09,'sine',0.06); beep(96,0.12,'sine',0.05); } }
     if(ascRank(lifetime)>=3 || cometActive){
-      trail.push({x:CX+Math.cos(ang)*R,y:CY+Math.sin(ang)*R,a:cometActive?0.8:0.5});
-      if(trail.length>(cometActive?22:14)) trail.shift();
+      dots.forEach(dot=>trail.push({x:CX+Math.cos(dot.ang)*R,y:CY+Math.sin(dot.ang)*R,a:cometActive?0.8:0.5}));
+      const cap=(cometActive?22:14)*dots.length;
+      while(trail.length>cap) trail.shift();
     }
-    // the dot blinks now and then — it's alive
     blinkT+=rdt; if(blinkT>blinkNext){ blinkT=0; blinkNext=5+Math.random()*5; blinkOn=0.14; }
     blinkOn=Math.max(0,blinkOn-rdt);
   }
-  // idle personality — the dot fidgets while you decide
   if(state===S.menu||state===S.dead){
     idleT+=rdt;
     if(idleAnim<0 && idleT>8){ idleT=0;
@@ -619,27 +647,32 @@ function frame(now){
     vg.addColorStop(1,'rgba('+hexToRgb(sk.arc)+','+vi+')');
     ctx.fillStyle=vg; ctx.fillRect(-sx-50,-sy-50,W+100,H+100);
   }
-  if(state===S.play && eclipseActive){                             // the world goes dark
+  if(state===S.play && eclipseActive){
     ctx.fillStyle='rgba(2,2,8,0.62)'; ctx.fillRect(-sx-50,-sy-50,W+100,H+100);
   }
 
   ctx.lineWidth=6;
-  const warn = state===S.play && pendingRev && !eclipseActive;
-  ctx.strokeStyle='rgba('+(reversalGlow>0.05||warn?'255,210,63':'255,255,255')+','+(0.10+ringPulse*0.25+reversalGlow*0.4+(warn?0.18:0))+')';
+  ctx.strokeStyle='rgba('+(reversalGlow>0.05?'255,210,63':'255,255,255')+','+(0.10+ringPulse*0.25+reversalGlow*0.4)+')';
   ctx.beginPath(); ctx.arc(CX,CY,R+ringPulse*8,0,Math.PI*2); ctx.stroke();
 
   if(state===S.play||state===S.dying){
     const sk=skin();
-    const d=Math.abs(angleDiff(ang,targetA)), p=Math.max(0,1-d/0.6);
-    if(state===S.play && shields>0 && !eclipseActive){ ctx.lineWidth=18; ctx.strokeStyle='rgba(90,200,255,.09)';
+    if(state===S.play && shields>0 && dots.length===1 && !eclipseActive){
+      ctx.lineWidth=18; ctx.strokeStyle='rgba(90,200,255,.09)';
       ctx.beginPath(); ctx.arc(CX,CY,R,targetA-targetHalf*1.4,targetA+targetHalf*1.4); ctx.stroke(); }
-    // target arc — silver sliver during an eclipse
+    const dmin=Math.min(...dots.map(dot=>Math.abs(angleDiff(dot.ang,targetA))));
+    const pArc=Math.max(0,1-dmin/0.6);
     if(eclipseActive){ ctx.lineWidth=5; ctx.strokeStyle='#dfe8ff'; ctx.shadowColor='#dfe8ff'; ctx.shadowBlur=blur(16); }
-    else { ctx.lineWidth=14+p*8; ctx.strokeStyle=gold?'#ffd23f':sk.arc; ctx.shadowColor=ctx.strokeStyle; ctx.shadowBlur=blur(22+p*22); }
+    else { ctx.lineWidth=14+pArc*8; ctx.strokeStyle=gold?'#ffd23f':sk.arc; ctx.shadowColor=ctx.strokeStyle; ctx.shadowBlur=blur(22+pArc*22); }
     ctx.lineCap='round';
     ctx.beginPath(); ctx.arc(CX,CY,R,targetA-targetHalf,targetA+targetHalf); ctx.stroke();
     ctx.shadowBlur=0; ctx.lineCap='butt';
-    // near-milestone drama — the next milestone ghosts at center when you're within 3
+    // midpoint notch — the split point is a visible promise
+    if(!eclipseActive && state===S.play){
+      ctx.strokeStyle='rgba(255,255,255,.75)'; ctx.lineWidth=2;
+      const mx=Math.cos(targetA), my=Math.sin(targetA);
+      ctx.beginPath(); ctx.moveTo(CX+mx*(R-11),CY+my*(R-11)); ctx.lineTo(CX+mx*(R+11),CY+my*(R+11)); ctx.stroke();
+    }
     if(state===S.play){
       const nm=MILESTONES.find(m=>!milestonesHit.has(m)&&m>score&&m-score<=3);
       if(nm){ ctx.font='900 '+Math.round(R*0.55)+'px Segoe UI,sans-serif'; ctx.textAlign='center';
@@ -649,28 +682,29 @@ function frame(now){
     trail.forEach(t=>{ ctx.globalAlpha=Math.max(0,t.a); ctx.fillStyle=cometActive?'#8cdcff':sk.dot;
       ctx.beginPath(); ctx.arc(t.x,t.y,cometActive?5:4,0,Math.PI*2); ctx.fill(); });
     ctx.globalAlpha=1;
-    // ghost of your best — appears when the record is in reach, dissolves when you take it
     if(state===S.play && best>0 && !recordBroken && score>=best-5 && score<=best){
-      const gx=CX+Math.cos(ang+Math.PI)*R, gy=CY+Math.sin(ang+Math.PI)*R;
+      const gx=CX+Math.cos(dots[0].ang+Math.PI)*R, gy=CY+Math.sin(dots[0].ang+Math.PI)*R;
       ctx.globalAlpha=0.28; ctx.fillStyle='#ffd23f';
       ctx.beginPath(); ctx.arc(gx,gy,7,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
     }
-    const dx=CX+Math.cos(ang)*R, dy=CY+Math.sin(ang)*R;
-    ctx.fillStyle=cometActive?'#8cdcff':sk.dot; ctx.shadowColor=ctx.fillStyle; ctx.shadowBlur=blur(14+p*26);
-    ctx.beginPath(); ctx.arc(dx,dy,(cometActive?12:9)+p*6,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
-    if(blinkOn>0 && !cometActive && state===S.play){                       // a quick wink
-      ctx.fillStyle='#0a0a12'; ctx.beginPath(); ctx.arc(dx+3,dy-3,7+p*4,0,Math.PI*2); ctx.fill(); }
+    dots.forEach(dot=>{
+      const d=Math.abs(angleDiff(dot.ang,targetA)), p=Math.max(0,1-d/0.6);
+      const dx=CX+Math.cos(dot.ang)*R, dy=CY+Math.sin(dot.ang)*R;
+      ctx.fillStyle=cometActive?'#8cdcff':sk.dot; ctx.shadowColor=ctx.fillStyle; ctx.shadowBlur=blur(14+p*26);
+      ctx.beginPath(); ctx.arc(dx,dy,(cometActive?12:9)+p*6,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+      if(blinkOn>0 && !cometActive && state===S.play){
+        ctx.fillStyle='#0a0a12'; ctx.beginPath(); ctx.arc(dx+3,dy-3,7+p*4,0,Math.PI*2); ctx.fill(); }
+    });
   }
 
-  // idle dot on menu / death screens
   if(state===S.menu||state===S.dead){
     const sk=skin(); let ix=CX, iy=CY-R, rx=9, ry=9;
     if(idleAnim===0){ const w=Math.sin(idleAnimT*14)*0.25*Math.exp(-idleAnimT*2);
-      rx=9*(1+w); ry=9*(1-w); }                                   // wobble
-    else if(idleAnim===1){ iy-=Math.abs(Math.sin(idleAnimT*7))*10*Math.exp(-idleAnimT*1.5); } // hop
+      rx=9*(1+w); ry=9*(1-w); }
+    else if(idleAnim===1){ iy-=Math.abs(Math.sin(idleAnimT*7))*10*Math.exp(-idleAnimT*1.5); }
     ctx.fillStyle=sk.dot; ctx.shadowColor=sk.dot; ctx.shadowBlur=blur(12);
     ctx.beginPath(); ctx.ellipse(ix,iy,rx,ry,0,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
-    if(idleAnim===2 && idleAnimT<0.45){                            // wink — a crescent
+    if(idleAnim===2 && idleAnimT<0.45){
       ctx.fillStyle='#0a0a12'; ctx.beginPath(); ctx.arc(ix+3,iy-2,7,0,Math.PI*2); ctx.fill(); }
   }
 
@@ -684,6 +718,7 @@ function frame(now){
   if(flash>0.01){ ctx.fillStyle='rgba('+flashColor+','+flash*0.5+')'; ctx.fillRect(0,0,W,H); }
   requestAnimationFrame(frame);
 }
+let idleT=0,idleAnim=-1,idleAnimT=0,idleLast=-1;
 function hexToRgb(h){ const n=parseInt(h.slice(1),16); return (n>>16&255)+','+(n>>8&255)+','+(n&255); }
 requestAnimationFrame(frame);
 
