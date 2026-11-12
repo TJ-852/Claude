@@ -69,21 +69,15 @@ Everything persists in `localStorage`.
 - **A secret skin** exists. Its trigger is not documented here.
 - The dot blinks mid-run and fidgets if you leave it waiting.
 
-## Two players & sharing
+## Challenges & sharing
 
-- **⚔ DUEL 2P** — pass-and-play on one device. Both players face the *same*
-  run: every roll is keyed to the hit counter from a shared seed, so gold
-  arcs, chests, and OVERCLOCKs land at identical hit counts for both. Comet
-  and Eclipse are disabled (one ×10 swing shouldn't decide a match) and meta
-  perks are neutralized. A hold-to-start handoff prevents accidental taps
-  from burning Player 2's run. Higher score wins; REMATCH reseeds.
 - **⚔ VS** — async challenges with zero backend: the daily seed *is* the
   protocol. A friend sends "DAILY 2026-11-11 — 247. Beat me."; you tap VS,
   enter 247, and play the identical daily with a 👑 pace chip. Pass them
   mid-run for a **CROWN TAKEN** celebration, a persistent 👑 crown count,
   and a pre-written counter-challenge in COPY TEXT ("Reclaim it?") — every
   resolved challenge mints the next one.
-- **Share card** — now draws *where you died* on the ring (the curiosity
+- **Share card** — draws *where you died* on the ring (the curiosity
   hook), your best superlative, and your crown count. The SHARE button
   pulses only on record-break deaths — never on ordinary ones.
 

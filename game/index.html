@@ -30,9 +30,17 @@
   #msg{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
     justify-content:center;color:#fff;text-align:center;z-index:10;
     background:rgba(10,10,18,.72);backdrop-filter:blur(3px);padding:20px;box-sizing:border-box;overflow-y:auto}
-  #msg h1{font-size:46px;margin:0;font-weight:900;letter-spacing:5px;
+  #msg h1{font-size:58px;margin:0;font-weight:900;letter-spacing:8px;
     background:linear-gradient(90deg,#5ac8ff,#ffd23f);-webkit-background-clip:text;
-    background-clip:text;color:transparent}
+    background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 22px rgba(90,200,255,.3));animation:breathe 3.2s ease-in-out infinite}
+  @keyframes breathe{0%,100%{filter:drop-shadow(0 0 16px rgba(90,200,255,.25))}
+    50%{filter:drop-shadow(0 0 36px rgba(255,210,63,.4))}}
+  .tag{opacity:.5;font-size:13px;letter-spacing:1px}
+  .cta{font-size:21px;letter-spacing:6px;font-weight:800;margin-top:30px;color:#fff;
+    animation:ctaPulse 1.6s ease-in-out infinite}
+  @keyframes ctaPulse{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
+  @media (prefers-reduced-motion:reduce){#msg h1,.cta,.pulse{animation:none}}
   #msg p{opacity:.7;font-size:15px;letter-spacing:1px;margin:11px 0 0}
   #msg .big{font-size:20px;opacity:.9;margin-top:18px}
   .go-head{font-size:34px !important;letter-spacing:3px !important}
@@ -46,7 +54,6 @@
   .tl .lab{opacity:.7}
   .tl b{font-variant-numeric:tabular-nums}
   @keyframes pulseBtn{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
-  .holding{background:rgba(255,210,63,.3)!important;border-color:#ffd23f!important}
   .pulse{animation:pulseBtn 1.2s ease-in-out infinite;border-color:#ffd23f!important}
   .pill{margin-top:22px;padding:12px 28px;border:1.5px solid rgba(255,255,255,.25);
     border-radius:40px;font-size:13px;letter-spacing:2px;opacity:.85}
@@ -72,7 +79,9 @@
     #mode{font-size:7px;top:4px;letter-spacing:1px}
     #combo{font-size:13px}#milestone{font-size:18px;letter-spacing:2px}#chest{font-size:11px}
     #msg{padding:8px;justify-content:flex-start}
-    #msg h1{font-size:20px;letter-spacing:2px}
+    #msg h1{font-size:24px;letter-spacing:3px}
+    .tag{font-size:8px}
+    .cta{font-size:12px;letter-spacing:3px;margin-top:12px}
     #msg p{font-size:9px;margin:4px 0 0;letter-spacing:.5px}
     #msg .big{font-size:11px;margin-top:6px}
     .go-head{font-size:16px !important;letter-spacing:1px !important}
@@ -98,13 +107,15 @@
 <div id="chest"></div>
 <div id="msg">
   <h1>PALINDROME</h1>
-  <p>Tap inside the <b style="color:#5ac8ff">glowing arc</b> — an <b>early</b> tap bounces you back, a <b>late</b> tap carries you on</p>
-  <p style="opacity:.5;font-size:13px">Dead-centre <b style="color:#ffd23f">SPLITS</b> the dot in two · centre taps leave calm, edge taps leave hot · a near-miss spends a <b style="color:#5ac8ff">shield</b> 🛡</p>
+  <p class="tag">early taps bounce back · late taps carry on · dead-centre <b style="color:#ffd23f">SPLITS</b></p>
+  <p class="cta" id="mtip">TAP TO PLAY</p>
   <div id="meta"></div>
-  <div class="row" data-ui><button data-ui id="dailyBtn">DAILY RUN</button><button data-ui id="vsBtn">⚔ VS</button><button data-ui id="duelBtn">⚔ DUEL 2P</button></div>
-  <div class="row" id="skinrow" data-ui></div>
-  <p class="big" id="mtip">Tap / Space to start</p>
-  <div class="pill">ONE TAP · WRITE IT BACKWARDS</div>
+  <div class="row" data-ui>
+    <button data-ui id="dailyBtn">DAILY</button>
+    <button data-ui id="vsBtn">⚔ VS</button>
+    <button data-ui id="skinsBtn">SKINS</button>
+  </div>
+  <div class="row hidden" id="skinrow" data-ui></div>
 </div>
 
 <script>
@@ -180,17 +191,13 @@ function skin(){ return SKINS[skinIdx]; }
 function refreshMeta(){
   $('best').textContent=best; $('tierhud').textContent=tierFor(best);
   if(!$('meta')) return;
-  const asc=ascRank(lifetime), next=ASC[asc];
   const playedToday=localStorage.pulseLastDay===todayStr();
-  const streakLine = streak>0 && !playedToday
+  const asc=ascRank(lifetime);
+  const streakBit = streak>0 && !playedToday
     ? `🔥 <b>Day ${streak}</b> — play today to keep it!`
-    : `🔥 <b>Day ${streak||0}</b> streak`;
+    : `🔥 ${streak||0}`;
   $('meta').innerHTML =
-    streakLine+` &nbsp;·&nbsp; Lifetime <b>${lifetime}</b> pts` +
-    (asc>0?` &nbsp;·&nbsp; <b style="color:#ffd23f">Ascension ${asc}</b>`:'') +
-    (next?`<br><span style="opacity:.55;font-size:.92em">${next-lifetime} lifetime pts to Ascension ${asc+1}${ascPerkHint(asc+1)}</span>`:'<br><span style="opacity:.55;font-size:.92em">Max ascension reached</span>') +
-    (dailyBestToday()?`<br><span style="opacity:.55;font-size:.92em">Today's daily best: <b>${dailyBestToday()}</b></span>`:'') +
-    `<br><span style="opacity:.45;font-size:.92em">📦 ${statChests} · 🎯 ${statPerfects} · ◆ ${questsDone} · ⧉ ${statSplits}${statSplitBest?' (best run '+statSplitBest+')':''}${statZenBest>=3?' · ☯ '+statZenBest:''}${statCrowns?' · 👑 '+statCrowns:''}${statComets?' · ☄ '+statComets:''}${localStorage.pulsePhantom==='1'?' · 👻 '+revPerfects:''}</span>`;
+    `<span style="opacity:.75">${streakBit}${best?` &nbsp;·&nbsp; BEST <b>${best}</b>`:''}${asc>0?` &nbsp;·&nbsp; <span style="color:#ffd23f">ASC ${asc}</span>`:''}${dailyBestToday()?` &nbsp;·&nbsp; daily ${dailyBestToday()}`:''}</span>`;
 }
 function ascPerkHint(r){ return r===1?' (skin)':r===2?' (+1 start shield)':r===3?' (dot trail)':''; }
 function renderSkinRow(){
@@ -204,24 +211,16 @@ function renderSkinRow(){
 }
 let dailyMode=false;
 function refreshDailyBtn(){ const b=$('dailyBtn');
-  if(b){ b.className=dailyMode?'on':''; b.textContent=dailyMode?'DAILY RUN ✓ (2× lifetime)':'DAILY RUN'; }
-  $('mode').textContent = duel ? ('PALINDROME · DUEL · PLAYER '+duel.stage)
-    : (dailyMode ? ('DAILY · '+todayStr()+(rivalTarget?(' · VS '+rivalTarget):(dailyBestToday()?(' · BEST '+dailyBestToday()):''))) : ''); }
+  if(b){ b.className=dailyMode?'on':''; b.textContent=dailyMode?'DAILY ✓ (2×)':'DAILY'; }
+  $('mode').textContent = dailyMode ? ('DAILY · '+todayStr()+(rivalTarget?(' · VS '+rivalTarget):(dailyBestToday()?(' · BEST '+dailyBestToday()):''))) : ''; }
 function wireModeButtons(){
   const db=$('dailyBtn'); if(db) db.onclick=e=>{ e.stopPropagation();
     dailyMode=!dailyMode; if(!dailyMode) rivalTarget=0; refreshDailyBtn(); };
   const vb=$('vsBtn'); if(vb) vb.onclick=e=>{ e.stopPropagation(); let v=0;
     try{ v=parseInt(prompt("Rival's score to beat (today's DAILY seed):")||'0',10); }catch(_){}
     if(v>0){ rivalTarget=v; dailyMode=true; } refreshDailyBtn(); };
-  const ub=$('duelBtn'); if(ub) ub.onclick=e=>{ e.stopPropagation();
-    duel={seed:(Math.random()*4294967296)>>>0, stage:1, p1:0}; dailyMode=false; rivalTarget=0; start(); };
-}
-function wireHold(btn,fn){ if(!btn) return; let t=null;
-  const down=e=>{ e.stopPropagation(); e.preventDefault(); btn.classList.add('holding');
-    t=setTimeout(()=>{ btn.classList.remove('holding'); t=null; fn(); },600); };
-  const up=()=>{ if(t){ clearTimeout(t); t=null; } btn.classList.remove('holding'); };
-  btn.addEventListener('mousedown',down); btn.addEventListener('touchstart',down,{passive:false});
-  ['mouseup','mouseleave','touchend','touchcancel'].forEach(ev=>btn.addEventListener(ev,up));
+  const sb=$('skinsBtn'); if(sb) sb.onclick=e=>{ e.stopPropagation();
+    const row=$('skinrow'); if(row) row.classList.toggle('hidden'); };
 }
 refreshMeta(); renderSkinRow();
 setTimeout(()=>{ wireModeButtons(); refreshDailyBtn(); },0);
@@ -250,7 +249,7 @@ let lastActor=0,splitRun=0,runSplitBest=0,zen=0;
 let judgedIdx=0,lastRev=false,runZenBest=0,zenRecordShown=false,splitRecordShown=false;
 let led={hit:0,perf:0,chest:0,quest:0,zen:0,ecl:0,rev:0};   // the score ledger — every point has a story
 let tallyDone=true,tallyEndT=0,tallySkip=null,tightSpawn=false;
-let rivalTarget=0,crowned=false,duel=null;
+let rivalTarget=0,crowned=false;
 const NOTES=[262,294,330,392,440,523,587,659,784,880];
 const TICKB=[0.28,0.20,0.13,0.07], TICKF=[470,600,760,950];
 
@@ -266,14 +265,11 @@ function nearestDot(){ let bi=0,bd=1e9;
 
 function newTarget(){
   eclipseActive=false; cometActive=false;
-  // in DUEL, every roll is keyed to the hit counter so both players meet the same events at the same hits
-  const dr = duel ? mulberry32((duel.seed ^ ((hits+1)*2654435761))>>>0) : null;
-  const rr = ()=> dr ? dr() : rng();
   const gap=Math.min(Math.PI*0.85, Math.max(0.9, effSpeed()*0.22));
   // targets spawn AHEAD of the acting dot's heading; a REVERSE routes closer-but-tighter
   const ref=dots[Math.min(lastActor,dots.length-1)]||dots[0];
   const clear=gap*(lastRev?0.5:0.8);
-  const roll=()=>ref.ang+ref.dir*( lastRev ? (gap*0.6+rr()*1.0) : (gap+rr()*1.7) );
+  const roll=()=>ref.ang+ref.dir*( lastRev ? (gap*0.6+rng()*1.0) : (gap+rng()*1.7) );
   let a=roll();
   for(let t=0;t<40;t++){
     if(dots.every(dt=>Math.abs(angleDiff(a,dt.ang))>=clear)) break;
@@ -284,16 +280,16 @@ function newTarget(){
   targetHalf=curHalf()*(overclockLeft>0?1.5:1)*(TINY?1.15:1)*(shrinkHits>0?0.7:1)*(dots.length>1?0.85:1)*(lastRev?0.9:1);
   tightSpawn=lastRev;
   if(shrinkHits>0) shrinkHits--;
-  gold = tintHits>0 ? true : (rr()<0.14);
+  gold = tintHits>0 ? true : (rng()<0.14);
   if(overclockLeft===0){
-    if(!duel && !eclipseUsed && hits>=30 && rr()<0.008){
+    if(!eclipseUsed && hits>=30 && rng()<0.008){
       eclipseActive=true; eclipseUsed=true; gold=false;
       popText($('milestone'),'ECLIPSE',1.5); beep(196,0.5,'sine',0.12);
-    } else if(!duel && !cometUsed && hits>=20 && rr()<0.007){
+    } else if(!cometUsed && hits>=20 && rng()<0.007){
       cometActive=true; cometUsed=true;
       popText($('chest'),'☄ COMET · ×10',1.35); chime(659,880);
     } else if(nextOverclock>0 && hits>=nextOverclock){
-      overclockLeft=3; nextOverclock=hits+(duel?38:35+Math.floor(rng()*10));
+      overclockLeft=3; nextOverclock=hits+35+Math.floor(rng()*10);
       targetHalf=curHalf()*1.5*(TINY?1.15:1);
       popText($('milestone'),'OVERCLOCK ×2',1.5);
       beep(TICKF[1],0.06,'square',0.15); beep(TICKF[2],0.06,'square',0.15); beep(TICKF[3],0.09,'square',0.18);
@@ -339,23 +335,22 @@ function start(){
   runChests=0; runPerfects=0; runComets=0; runSplits=0;
   eclipseUsed=false; eclipseActive=false; cometUsed=false; cometActive=false;
   overclockLeft=0; recordBroken=false; recordHits=0; palindromesSeen.clear();
-  shields = duel ? 2 : (ascRank(lifetime)>=2 ? 3 : 2);   // duel neutralizes meta perks
+  shields = ascRank(lifetime)>=2 ? 3 : 2;
   dots=[{ang:-Math.PI/2,dir:1}]; particles=[]; shocks=[]; trail=[];
   dyingT=0; timeScale=1; slowmoT=0; hbT=0; tintHits=0;
   milestonesHit.clear();
   rng = dailyMode ? mulberry32(dailySeed()) : Math.random;
   qrng = dailyMode ? mulberry32(dailySeed()^0x5bd1e995) : Math.random;
   speed=curSpeed();
-  nextChest = duel ? 10 : 8 + Math.floor(rng()*8);
-  nextOverclock = duel ? 38 : 35 + Math.floor(rng()*10);
+  nextChest = 8 + Math.floor(rng()*8);
+  nextOverclock = 35 + Math.floor(rng()*10);
   revenged=false; blinkT=0; blinkOn=0; deathInfo=null; runQuests=0; shrinkHits=0;
   lastActor=0; splitRun=0; runSplitBest=0; zen=0; vtrail=[];
   judgedIdx=0; lastRev=false; runZenBest=0; zenRecordShown=false; splitRecordShown=false; updZen();
   led={hit:0,perf:0,chest:0,quest:0,zen:0,ecl:0,rev:0};
   tallyDone=true; tallySkip=null; tightSpawn=false; crowned=false;
   try{ $('shields').style.opacity=1; }catch(e){}
-  if(duel){ quest=null; updQuestHUD(); } else newQuest();
-  updNextGoal(); refreshDailyBtn();
+  newQuest(); updNextGoal(); refreshDailyBtn();
   $('score').textContent=0; $('score').style.color=''; updShields();
   newTarget(); state=S.play; $('msg').classList.add('hidden');
 }
@@ -402,8 +397,7 @@ function openChest(){
   const px=CX+Math.cos(anchor.ang)*R, py=CY+Math.sin(anchor.ang)*R;
   const lucky = dailyMode && runChests===0;
   const jp = lucky?0.15:0.05;
-  const roll = duel ? mulberry32((duel.seed ^ 0x51ed270b ^ ((hits+1)*0x85EBCA6B))>>>0)() : rng();
-  let txt;
+  const roll=rng(); let txt;
   if(roll<jp){ jackpotHits=10; txt=lucky?'✦ LUCKY DAY · JACKPOT ×2':'✦ JACKPOT · ×2 FOR 10 HITS'; }
   else if(roll<0.40 && shields<3){ shields++; updShields(); txt='✦ CHEST +1 SHIELD 🛡'; }
   else if(roll<0.70){ const b=15+combo; score+=b; led.chest+=b; txt='✦ CHEST +'+b+' PTS'; }
@@ -415,7 +409,7 @@ function openChest(){
   popText($('chest'), txt, 1.3);
   burst(px,py, roll<jp?'#ffd23f':'#7CFC9E', roll<jp?32:22);
   flash=0.35; flashColor=roll<jp?'255,210,63':'124,252,158'; chime(880,1174);
-  nextChest = hits + (duel?10:8 + Math.floor(rng()*8));
+  nextChest = hits + 8 + Math.floor(rng()*8);
 }
 
 function loseDot(i,px,py){
@@ -435,7 +429,6 @@ function tap(){
   if(state===S.menu){ start(); return; }
   if(state===S.dead){
     if(!tallyDone){ if(tallySkip) tallySkip(); return; }  // first tap completes the tally
-    if(duel) return;                                      // duel flow is button-driven — no accidental handoffs
     if(performance.now()-tallyEndT<350) return;           // debounce so the skip-tap can't restart
     reset(); return; }
   if(state===S.dying) return;
@@ -478,7 +471,7 @@ function tap(){
       burst(px,py,'#ffd23f',40); flash=0.6; flashColor='140,220,255';
       chime(523,784); beep(1046,0.25,'sine',0.2); }
     $('score').textContent=score;
-    if(!duel && !revenged && lastRunScore>=10 && score>lastRunScore && best!==lastRunScore){
+    if(!revenged && lastRunScore>=10 && score>lastRunScore && best!==lastRunScore){
       revenged=true; score+=10; led.rev+=10; $('score').textContent=score;
       popText($('combo'),'⚔ REVENGED · +10',1.2); beep(587,0.1,'sine',0.2); beep(880,0.14,'sine',0.18); buzz(15); }
     if(rivalTarget>0 && !crowned && score>rivalTarget){
@@ -706,12 +699,6 @@ function finalizeDeath(){
   if(isBest&&score>0){ head='NEW BEST!'; sub='You beat your record'; }
   else if(best>0&&score>=best*0.8&&score<best){ head='SO CLOSE'; sub=(best-score)+' from your BEST'; }
   else { head='GAME OVER'; sub='Best '+best; }
-  if(duel){
-    if(duel.stage===1){ duel.p1=score; head='PLAYER 1 · '+score; sub='Hold the button to hand over'; }
-    else { const p2=score;
-      head = p2>duel.p1 ? 'PLAYER 2 WINS' : (p2<duel.p1 ? 'PLAYER 1 WINS' : 'DEAD HEAT');
-      sub = 'P1 '+duel.p1+' &nbsp;·&nbsp; P2 '+p2; }
-  }
   const mult=(1+Math.floor(comboPeak/5)*0.5).toFixed(1);
   const m=$('msg'); m.classList.remove('hidden');
   m.innerHTML=
@@ -721,43 +708,32 @@ function finalizeDeath(){
     `<div id="tally"></div>`+
     `<p style="opacity:.6">${sub} &nbsp;·&nbsp; ${tierFor(score)} &nbsp;·&nbsp; combo peaked ×${mult}${runSplits?' &nbsp;·&nbsp; ⧉ split ×'+runSplits+(runSplitBest?' (ran '+runSplitBest+' hits)':''):''}${runZenBest>=3?' &nbsp;·&nbsp; ☯ zen ×'+runZenBest:''}${dailyLine}</p>`+
     `<p style="opacity:.45;font-style:italic;font-size:.92em">“${epitaph(isBest)}”</p>`+
-    (rivalTarget&&!duel?`<p style="color:${score>rivalTarget?'#ffd23f':'#8cdcff'};-webkit-text-fill-color:${score>rivalTarget?'#ffd23f':'#8cdcff'};opacity:.85">${score>rivalTarget?'👑 CROWN TAKEN · ':'⚔ crown missed · '}${score} v ${rivalTarget}</p>`:'')+
+    (rivalTarget?`<p style="color:${score>rivalTarget?'#ffd23f':'#8cdcff'};-webkit-text-fill-color:${score>rivalTarget?'#ffd23f':'#8cdcff'};opacity:.85">${score>rivalTarget?'👑 CROWN TAKEN · ':'⚔ crown missed · '}${score} v ${rivalTarget}</p>`:'')+
     (recordBroken?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;opacity:.85">⚡ held the record zone for ${recordHits} hits</p>`:'')+
     (runComets?`<p style="color:#8cdcff;-webkit-text-fill-color:#8cdcff;opacity:.85">☄ caught a comet</p>`:'')+
     (justUnlocked.length?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;margin-top:12px">✦ SKIN UNLOCKED: ${justUnlocked.join(', ')}</p>`:'')+
     (ascNow>ascBefore?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;margin-top:10px">✦ ASCENSION ${ascNow} REACHED${ascPerkHint(ascNow)}</p>`:'')+
     `<p style="opacity:.5;font-size:.9em;margin-top:12px">🔥 Day ${streak} &nbsp;·&nbsp; Lifetime ${lifetime} &nbsp;·&nbsp; 📦 ${statChests} &nbsp;·&nbsp; 🎯 ${statPerfects} &nbsp;·&nbsp; ◆ ${questsDone} &nbsp;·&nbsp; ⧉ ${statSplits}${statComets?' &nbsp;·&nbsp; ☄ '+statComets:''}</p>`+
-    (duel
-     ? (duel.stage===1
-        ? `<div class="row" data-ui><button data-ui id="holdBtn">HOLD ▸ PLAYER 2</button><button data-ui id="exitDuelBtn">EXIT ▸ SOLO</button></div>`
-        : `<div class="row" data-ui><button data-ui id="rematchBtn">⚔ REMATCH</button><button data-ui id="exitDuelBtn">EXIT ▸ SOLO</button></div>`)
-     : `<div class="row" data-ui>`+
-       `<button data-ui id="shareBtn">SHARE CARD</button>`+
-       `<button data-ui id="copyBtn">COPY TEXT</button>`+
-       `<button data-ui id="againBtn">PLAY AGAIN ▸</button>`+
-       `</div>`+
-       `<div class="row" data-ui><button data-ui id="dailyBtn">DAILY RUN</button><button data-ui id="vsBtn">⚔ VS</button><button data-ui id="duelBtn">⚔ DUEL 2P</button></div>`+
-       `<div class="row" id="skinrow" data-ui></div>`+
-       `<p style="opacity:.35;font-size:.85em;margin-top:16px">tap anywhere to retry</p>`);
+    `<div class="row" data-ui>`+
+      `<button data-ui id="shareBtn">SHARE CARD</button>`+
+      `<button data-ui id="copyBtn">COPY TEXT</button>`+
+      `<button data-ui id="againBtn">PLAY AGAIN ▸</button>`+
+    `</div>`+
+    `<div class="row" data-ui><button data-ui id="dailyBtn">DAILY</button><button data-ui id="vsBtn">⚔ VS</button></div>`+
+    `<div class="row" id="skinrow" data-ui></div>`+
+    `<p style="opacity:.35;font-size:.85em;margin-top:16px">tap anywhere to retry</p>`;
   renderSkinRow(); wireModeButtons(); refreshDailyBtn();
-  if(duel){
-    const ex=$('exitDuelBtn'); if(ex) ex.onclick=e=>{ e.stopPropagation(); duel=null; refreshDailyBtn(); reset(); };
-    if(duel.stage===1){ wireHold($('holdBtn'),()=>{ duel.stage=2; reset(); }); }
-    else { const rb=$('rematchBtn'); if(rb) rb.onclick=e=>{ e.stopPropagation();
-      duel={seed:(Math.random()*4294967296)>>>0, stage:1, p1:0}; reset(); }; }
-  } else {
-    $('againBtn').onclick=e=>{ e.stopPropagation(); reset(); };
-    $('shareBtn').onclick=e=>{ e.stopPropagation(); shareCard($('shareBtn')); };
-    if(isBest&&score>0) $('shareBtn').classList.add('pulse');   // the record-break death is THE share moment
-    $('copyBtn').onclick=e=>{ e.stopPropagation();
-      const sup = runSplitBest>=5?('⧉ survived '+runSplitBest+' split'):(runZenBest>=4?('☯ zen ×'+runZenBest):('combo ×'+mult));
-      const txt = crowned
-        ? `PALINDROME 👑 Took your crown on DAILY ${todayStr()} — ${score} v ${rivalTarget}. Reclaim it?${statCrowns>1?' (crowns ×'+statCrowns+')':''}`
-        : (dailyMode
-          ? `PALINDROME DAILY ${todayStr()} — ${score} pts · ${tierFor(score)}. Same orbit, same chests, zero excuses. Beat me.`
-          : `PALINDROME · ${score} — ${tierFor(score)} · ${sup} 🎯 can you beat it?`);
-      try{ navigator.clipboard.writeText(txt); $('copyBtn').textContent='COPIED ✓'; }catch(_){ $('copyBtn').textContent=txt; } };
-  }
+  $('againBtn').onclick=e=>{ e.stopPropagation(); reset(); };
+  $('shareBtn').onclick=e=>{ e.stopPropagation(); shareCard($('shareBtn')); };
+  if(isBest&&score>0) $('shareBtn').classList.add('pulse');   // the record-break death is THE share moment
+  $('copyBtn').onclick=e=>{ e.stopPropagation();
+    const sup = runSplitBest>=5?('⧉ survived '+runSplitBest+' split'):(runZenBest>=4?('☯ zen ×'+runZenBest):('combo ×'+mult));
+    const txt = crowned
+      ? `PALINDROME 👑 Took your crown on DAILY ${todayStr()} — ${score} v ${rivalTarget}. Reclaim it?${statCrowns>1?' (crowns ×'+statCrowns+')':''}`
+      : (dailyMode
+        ? `PALINDROME DAILY ${todayStr()} — ${score} pts · ${tierFor(score)}. Same orbit, same chests, zero excuses. Beat me.`
+        : `PALINDROME · ${score} — ${tierFor(score)} · ${sup} 🎯 can you beat it?`);
+    try{ navigator.clipboard.writeText(txt); $('copyBtn').textContent='COPIED ✓'; }catch(_){ $('copyBtn').textContent=txt; } };
   // the tally — the run adds itself up
   const items=[];
   if(led.hit) items.push(['TAPS ×'+(hits-runPerfects),led.hit]);
