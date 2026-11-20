@@ -34,6 +34,10 @@ dependencies, no server — open `index.html` in any browser and play.
   below, the heartbeat rocks G to D as Satie's left hand does, and the
   approach ticks, the reverse cue and the ring's notches are tuned to the
   same key.
+- **SATIE!** Play the tune's first eight notes straight through and the run
+  pays an 88-point bonus, one for each key of the piano, over a rolled D
+  major seventh. A slip starts the phrase again, so it can still be earned
+  later in the run; it pays once per run.
 - Rising ticks telegraph each strike; the dot grows and brightens as it closes in.
 - **The ring closes in.** Every lap that lets the arc go by untapped pulls
   the ring in a notch and turns it redder. Timing is unchanged (everything
@@ -74,6 +78,10 @@ dependencies, no server — open `index.html` in any browser and play.
 - **Share** — a rendered PNG score card, copied to the clipboard
 
 Everything persists in `localStorage`.
+
+The in-play HUD is set in *Press Start 2P*, a 1980s arcade face loaded from
+Google Fonts; offline it falls back to a plain monospace and the game is
+otherwise unaffected.
 
 ## Surprise & delight
 
@@ -145,7 +153,7 @@ outside it can read the board but not write to it.
 ## The tally
 
 Every death ends in the run adding itself up: TAPS, PERFECTS, CHESTS,
-REVERSES, CHESTS, QUESTS, ZEN, ECLIPSE, REVENGE count up line by line (rising note per line)
+REVERSES, SATIE!, CHESTS, QUESTS, ZEN, ECLIPSE, REVENGE count up line by line (rising note per line)
 into the grand total, which slams in with a flash. The tally never blocks:
 after a short pause that swallows a frantic last tap, one tap plays again.
 The death screen itself is deliberately short — score, epitaph, play again —
