@@ -69,6 +69,24 @@ Everything persists in `localStorage`.
 - **A secret skin** exists. Its trigger is not documented here.
 - The dot blinks mid-run and fidgets if you leave it waiting.
 
+## Leaderboard & ghosts
+
+When hosted as a claude.ai artifact (with the `db` and `user` capabilities),
+daily runs post to a **shared leaderboard**: today's top five on the title
+and death screens, your own rank if you're outside it. Rows store only an
+opaque id and a score — names are resolved per viewer at render time, never
+stored. A score is written only when it beats your own best for the day.
+
+Every daily run is also **recorded** (dot position every 150 ms, score at
+each hit) and posted alongside the score, so it can be raced: the 👻 button
+cycles LEADER / ME / OFF, and a gold ghost ring shows exactly where that run
+was at this moment of yours, with a live pace chip ("👻 Sam 112 · +8").
+
+Both are optional layers: opened as a plain file, signed out, or on a watch,
+the game detects the missing capabilities and plays exactly as before.
+Signed-in members of the owning organization can post scores; visitors from
+outside it can read the board but not write to it.
+
 ## Challenges & sharing
 
 - **⚔ VS** — async challenges with zero backend: the daily seed *is* the
