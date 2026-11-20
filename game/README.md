@@ -24,9 +24,16 @@ dependencies, no server — open `index.html` in any browser and play.
 - **Your first runs are gentler**: until your best reaches 25, the first ten
   hits of a run cannot split the dot and a wild tap there costs a shield
   instead of the run.
-- **The run is a tune.** Each hit steps through a pentatonic phrase in the
-  dot's direction, so reversing plays the melody backwards; a split adds a
-  fifth, each phase lifts the key, and the heartbeat is the bass line.
+- **The run plays Satie.** Each hit sounds the next note of Erik Satie's
+  *Gymnopédie No. 1* (1888, public domain; pitches transcribed from the
+  Mutopia Project engraving), so playing well plays the tune: all 116 notes,
+  with the repeat and both endings, then round again. The rhythm is yours,
+  though notes the score holds longer ring longer. A slip (a graze, a lost
+  dot, the ring closing) sends the melody back to the start of its phrase,
+  so each phrase is earned. With two dots the line is doubled an octave
+  below, the heartbeat rocks G to D as Satie's left hand does, and the
+  approach ticks, the reverse cue and the ring's notches are tuned to the
+  same key.
 - Rising ticks telegraph each strike; the dot grows and brightens as it closes in.
 - **The ring closes in.** Every lap that lets the arc go by untapped pulls
   the ring in a notch and turns it redder. Timing is unchanged (everything
@@ -67,8 +74,6 @@ Everything persists in `localStorage`.
   3 times, 15 hits without a graze…), each paying a bonus; daily runs share
   the same quest sequence for everyone.
 - **Revenge** — your last run's score is a rival; pass it for a "⚔ REVENGED" bonus.
-- **Melodic combos** — each hit plays the next note of a rising pentatonic
-  scale, so a long combo literally composes a tune.
 - **Epitaphs** — the death screen has opinions: "Greed is a hell of a drug.",
   "It reads the same backwards."
 - **Haptics** — hits, perfects, splits, and deaths vibrate where supported.

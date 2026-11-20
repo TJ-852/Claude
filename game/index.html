@@ -392,25 +392,37 @@ let DB=null,USER=null,myId=null,boardRows=[],boardAt=0;
 let ghostMode=Math.min(2,+(localStorage.pulseGhost||1)),ghost=null,gPtr=0,gsPtr=0,gName='',gchipAcc=0;
 let runT0=0,runTrace=[],runScores=[],traceAcc=0;
 let boardY=[],boardNames={},canPost=true,runAbove=null,seedToday=0,deadAt=0,rankNote='';
-// the run is a tune: each hit steps a cursor through a pentatonic phrase in the dot's direction,
-// so reversing plays the melody backwards; a split adds a fifth; each phase lifts the key
-const PHRASES=[
-  [0,2,4,7,9,7,4,2,0,4,7,9,12,9,7,4],
-  [0,4,2,7,4,9,7,12,9,7,4,7,2,4,0,2],
-  [7,4,2,0,2,4,7,9,12,9,7,4,2,4,7,4],
-  [0,7,4,9,7,12,9,7,4,7,2,4,0,2,4,7],
-];
-let phrase=PHRASES[0],cursor=0,hbAlt=false;
-function keyShift(){ return Math.min(10,phase*2); }
-function playNote(step,o){
-  cursor=((cursor+step)%16+16)%16;
-  const f=261.63*Math.pow(2,(phrase[cursor]+keyShift())/12);
-  beep(f,0.12,'triangle',0.24);
-  if(o.split) beep(f*1.4983,0.12,'triangle',0.11);
-  if(o.perfect) beep(f*2,0.16,'sine',0.13,0.03);
-  if(o.gold) beep(f*3,0.08,'sine',0.07,0.02);
+// The run plays Erik Satie's Gymnopédie No. 1 (1888, public domain): each hit sounds the next note of the
+// melody, so playing well plays the tune. Pitches are transcribed from the Mutopia Project engraving; the
+// rhythm is the player's, though notes the score holds longer are left to ring longer. A slip (a graze,
+// a lost dot, the ring closing) sends the melody back to the start of its phrase, so each phrase is earned.
+const TUNE=(()=>{
+  const P1='F#5 A5 G5 F#5 C#5 B4 C#5 D5 A4:3 F#4:12';
+  const P2='F#5 A5 G5 F#5 C#5 B4 C#5 D5 A4:3 C#5:3 F#5:3 E4:9';
+  const P3='A4 B4 C5 E5 D5 B4 D5 C5 B4 D5:5';
+  const P4='D5 E5 F5 G5 A5 C5 D5 E5 D5 B4 D5:5';
+  const E1='D5 G5:3 F#5:3 B4 A4 B4 C#5 D5 E5 C#5 D5 E5 F#4:3 C5+A4+E4+C4:3 D5+A4+F#4+D4:3';
+  const E2='D5 G5:3 F5:3 B4 C5 F5 E5 D5 C5 E5 D5 C5 F4:3 C5+A4+E4+C4:3 D5+A4+F4+D4:3';
+  const SEMI={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+  const hz=n=>{ const m=/^([A-G])(#?)(\d)$/.exec(n);
+    return 440*Math.pow(2,((+m[3]+1)*12+SEMI[m[1]]+(m[2]?1:0)-69)/12); };
+  const out=[];
+  [P1,P2,P3,P4,E1,P1,P2,P3,P4,E2].forEach(ph=>{ const first=out.length;      // the repeat, with both endings
+    ph.split(' ').forEach(tok=>{ const part=tok.split(':');
+      out.push({f:part[0].split('+').map(hz),beats:+part[1]||1,ph:first}); }); });
+  return out;
+})();
+let tuneIdx=0,hbAlt=false;
+function playNote(o){
+  const n=TUNE[tuneIdx]; tuneIdx=(tuneIdx+1)%TUNE.length;
+  const dur=Math.min(1.5,0.32+n.beats*0.12);
+  n.f.forEach((f,i)=>beep(f,dur,'triangle',i?0.08:0.22));   // the closing chords sound in full
+  if(o.split) beep(n.f[0]/2,dur,'sine',0.08);               // two dots: the line doubled an octave below
+  if(o.perfect) beep(n.f[0]*2,dur*0.8,'sine',0.06,0.03);
+  if(o.gold) beep(n.f[0]*3,0.1,'sine',0.045,0.02);
 }
-const TICKB=[0.28,0.20,0.13,0.07], TICKF=[470,600,760,950];
+function tuneSlip(){ tuneIdx=TUNE[tuneIdx].ph; }
+const TICKB=[0.28,0.20,0.13,0.07], TICKF=[440,587.33,880,1174.66];   // A and D only: they sit under every bar of the tune
 
 function rand(a,b){ return a+Math.random()*(b-a); }
 function angleDiff(a,b){ let d=(a-b)%(Math.PI*2); if(d>Math.PI)d-=Math.PI*2; if(d<-Math.PI)d+=Math.PI*2; return d; }
@@ -518,7 +530,7 @@ function start(){
   seedToday=dailySeed();
   rng = dailyMode ? mulberry32(seedToday) : Math.random;
   qrng = dailyMode ? mulberry32(seedToday^0x5bd1e995) : Math.random;
-  phrase=PHRASES[Math.floor(Math.random()*PHRASES.length)]; cursor=0; hbAlt=false; runAbove=null;
+  tuneIdx=0; hbAlt=false; runAbove=null;
   speed=curSpeed();
   nextChest = 8 + Math.floor(rng()*8);
   nextOverclock = 35 + Math.floor(rng()*10);
@@ -606,12 +618,12 @@ function missedPass(){
   if(missPasses<4){
     missPasses++; ringK=1-(TINY?0.06:0.12)*missPasses;
     shake=Math.max(shake,3+missPasses); buzz(10);
-    beep(233*Math.pow(0.84,missPasses),0.24,'sine',0.17);  // each notch a step lower
+    beep([440,392,329.63,293.66][missPasses-1],0.26,'triangle',0.15);   // A, G, E, D: each notch a step lower, in key
     return;
   }
   missPasses=0; ringK=1;
   if(shields>0){
-    shields--; updShields(); combo=Math.floor(combo/2); perfectStreak=0; zen=0; updZen();
+    shields--; updShields(); combo=Math.floor(combo/2); perfectStreak=0; zen=0; updZen(); tuneSlip();
     flash=0.3; flashColor='255,141,161'; shake=10; beep(140,0.3,'sawtooth',0.2); buzz(30);
     if(quest&&quest.type==='clean'){ quest.start=hits; quest.got=0; updQuestHUD(); }
   } else {
@@ -623,7 +635,7 @@ function missedPass(){
 function loseDot(i,px,py){
   // with two dots, a bad tap costs a dot, not the run
   dots.splice(i,1);
-  lastActor=0; splitRun=0; zen=0; judgedIdx=0; lastRev=false; updZen();
+  lastActor=0; splitRun=0; zen=0; judgedIdx=0; lastRev=false; updZen(); tuneSlip();
   try{ $('shields').style.opacity=1; }catch(e){}
   combo=Math.floor(combo/2); perfectStreak=0;
   popText($('combo'),'⧉ DOT LOST',1.2);
@@ -660,7 +672,7 @@ function tap(){
       dots=[{ang:dot.ang,dir:1},{ang:dot.ang,dir:-1}];
       splitRun=0;
     } else if(!perfect && beforeMid){ dot.dir*=-1; didReverse=true; reversalGlow=1;
-      beep(494,0.05,'sine',0.13); beep(349,0.1,'sine',0.13,0.07); }  // a TRUE falling two-note: you turned around
+      beep(587.33,0.05,'sine',0.10); beep(440,0.1,'sine',0.10,0.07); }  // a falling D to A, in key: you turned around
     hits++; combo++; comboPeak=Math.max(comboPeak,combo); sinceShield++;
     missPasses=0; ringK=1;                                // a hit lets the ring breathe out
     if(tintHits>0) tintHits--;
@@ -672,7 +684,7 @@ function tap(){
     gain=Math.round(gain);
     if(didReverse) gain=Math.ceil(gain*1.3);              // reverse pay, rounded UP so it is real at every combo
     score+=gain;
-    playNote(didSplit?1:dot.dir,{split:dots.length>1,perfect:perfect,gold:gold});
+    playNote({split:dots.length>1&&!didSplit,perfect:perfect,gold:gold});
     led[perfect?'perf':'hit']+=gain;
     if(wasEclipse){ const bounty=25+combo; score+=bounty; led.ecl+=bounty;
       popText($('chest'),'☀ +'+(gain+bounty),1.4);
@@ -773,7 +785,7 @@ function tap(){
     shields--; updShields(); combo=Math.floor(combo/2); perfectStreak=0;
     burst(px,py,'#5ac8ff',10); shake=6; ringPulse=1; flash=0.22; flashColor='90,200,255';
     slowmoT=0.35; slowmoS=0.35; beep(200,0.18,'square',0.24); beep(150,0.12,'square',0.16); buzz(25);
-    zen=0; updZen(); lastRev=false;
+    zen=0; updZen(); lastRev=false; tuneSlip();
     if(quest&&quest.type==='clean'){ quest.start=hits; quest.got=0; updQuestHUD(); }
     newTarget();
   } else {
@@ -1025,8 +1037,8 @@ function frame(now){
       beep(TICKF[tickIdx],0.035,'sine',(eclipseActive?0.02:0.06)+tickIdx*0.012); tickIdx++; }
     if(tti>0.4) tickIdx=0;
     if(!eclipseActive){ hbT+=rdt; const beatT=Math.max(0.30,0.85-(speed-2.1)*0.08);
-      if(hbT>=beatT){ hbT=0; const root=130.81*Math.pow(2,keyShift()/12);
-        beep(hbAlt?root*0.749:root,0.16,'sine',0.07); hbAlt=!hbAlt; } }   // the heartbeat is the bass line
+      if(hbT>=beatT){ hbT=0;
+        beep(hbAlt?146.83:196.00,0.18,'sine',0.07); hbAlt=!hbAlt; } }   // the heartbeat rocks G to D, as Satie's left hand does
     if(ascRank(lifetime)>=3 || cometActive){
       dots.forEach(dot=>trail.push({x:CX+Math.cos(dot.ang)*R,y:CY+Math.sin(dot.ang)*R,a:cometActive?0.8:0.5}));
       const cap=(cometActive?22:14)*dots.length;
