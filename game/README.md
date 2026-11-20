@@ -28,6 +28,12 @@ dependencies, no server — open `index.html` in any browser and play.
   dot's direction, so reversing plays the melody backwards; a split adds a
   fifth, each phase lifts the key, and the heartbeat is the bass line.
 - Rising ticks telegraph each strike; the dot grows and brightens as it closes in.
+- **The ring closes in.** Every lap that lets the arc go by untapped pulls
+  the ring in a notch and turns it redder. Timing is unchanged (everything
+  is measured in angles), but there is less to read. At its tightest, one
+  more wasted lap costs a shield, or the run if you have none. Any hit
+  springs it back to full size. It only starts once a run's first hit lands,
+  and it tightens less on watch-sized screens.
 
 ## Scoring
 
