@@ -13,11 +13,11 @@
     text-shadow:0 2px 18px rgba(90,200,255,.35)}
   .sub{font-size:13px;opacity:.55;letter-spacing:2px;margin-top:4px;text-transform:uppercase}
   #shields{margin-top:8px;font-size:15px;letter-spacing:3px;color:#5ac8ff;height:16px}
-  #quest{margin-top:7px;font-size:12px;letter-spacing:1px;color:#9fd8ff;opacity:.85;max-width:46vw}
+  #quest{margin-top:7px;font-size:12px;letter-spacing:1px;color:#9fd8ff;opacity:.35;max-width:46vw;transition:opacity .5s}
   #zen{margin-top:4px;font-size:12px;letter-spacing:1px;color:#9fe8c8;opacity:.85;height:14px}
   .best{text-align:right;font-size:15px;opacity:.6;letter-spacing:1px}
   #tierhud{text-align:right;font-size:12px;letter-spacing:2px;opacity:.5;margin-top:6px;text-transform:uppercase}
-  #nextgoal{text-align:right;font-size:11px;letter-spacing:1px;opacity:.45;margin-top:4px}
+  #nextgoal{text-align:right;font-size:11px;letter-spacing:1px;opacity:.7;margin-top:4px}
   #mode{position:fixed;top:14px;left:0;right:0;text-align:center;pointer-events:none;
     font-size:12px;letter-spacing:3px;opacity:.5;color:#ffd23f;z-index:5;text-transform:uppercase}
   #combo{position:fixed;left:0;right:0;top:34%;text-align:center;pointer-events:none;
@@ -28,7 +28,7 @@
   #chest{position:fixed;left:0;right:0;top:60%;text-align:center;pointer-events:none;
     color:#7CFC9E;font-weight:800;font-size:22px;opacity:0;letter-spacing:1px;z-index:6}
   #msg{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
-    justify-content:center;color:#fff;text-align:center;z-index:10;
+    justify-content:flex-start;color:#fff;text-align:center;z-index:10;
     background:rgba(10,10,18,.72);backdrop-filter:blur(3px);padding:20px;box-sizing:border-box;overflow-y:auto}
   #msg h1{font-size:58px;margin:0;font-weight:900;letter-spacing:8px;
     background:linear-gradient(90deg,#5ac8ff,#ffd23f);-webkit-background-clip:text;
@@ -42,9 +42,15 @@
   @keyframes ctaPulse{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
   @media (prefers-reduced-motion:reduce){#msg h1,.cta,.pulse{animation:none}}
   #msg p{opacity:.7;font-size:15px;letter-spacing:1px;margin:11px 0 0}
+  #msg>:first-child{margin-top:auto}
+  #msg>:last-child{margin-bottom:auto}
   #msg .big{font-size:20px;opacity:.9;margin-top:18px}
   .go-head{font-size:34px !important;letter-spacing:3px !important}
-  .go-score{font-size:54px;margin-top:4px;color:#fff;-webkit-text-fill-color:#fff}
+  #msg .go-score{font-size:54px;margin-top:4px;color:#fff;-webkit-text-fill-color:#fff;opacity:1}
+  #msg .epi{opacity:.8;font-style:italic;font-size:16px;margin-top:10px}
+  #msg .rankline{color:#ffd23f;-webkit-text-fill-color:#ffd23f;opacity:.95;font-weight:700;min-height:0}
+  #more{display:flex;flex-direction:column;align-items:center}
+  #msg .rankline:empty{display:none}
   .wordmark{font-weight:900;letter-spacing:7px;font-size:17px;
     background:linear-gradient(90deg,#5ac8ff,#ffd23f);-webkit-background-clip:text;
     background-clip:text;color:transparent;opacity:.95;margin-bottom:2px}
@@ -70,6 +76,8 @@
   #board .brow{display:flex;justify-content:space-between;gap:16px;opacity:.75}
   #board .brow.me{color:#ffd23f;opacity:1}
   #board b{font-variant-numeric:tabular-nums}
+  #board .bnote{opacity:.6;font-size:12px}
+  #board .bnote.hot{color:#ff8da1;opacity:.95}
   #gchip{text-align:right;font-size:11px;letter-spacing:1px;opacity:.8;margin-top:4px}
   .hidden{display:none!important}
   .lock{opacity:.4}
@@ -91,7 +99,8 @@
     #msg p{font-size:9px;margin:4px 0 0;letter-spacing:.5px}
     #msg .big{font-size:11px;margin-top:6px}
     .go-head{font-size:16px !important;letter-spacing:1px !important}
-    .go-score{font-size:26px;margin-top:2px}
+    #msg .go-score{font-size:26px;margin-top:2px}
+    #msg .epi{font-size:9px;margin-top:4px}
     .wordmark{font-size:9px;letter-spacing:3px}
     #tally{font-size:9px;min-width:150px;line-height:1.7;margin-top:6px}
     .pill{padding:5px 12px;font-size:8px;margin-top:8px;letter-spacing:1px}
@@ -141,10 +150,12 @@ function blur(v){ return TINY?v*0.35:v; }
 
 // ---- audio / haptics ----
 let AC;
+let BUS;
 function beep(freq,dur=0.08,type='sine',vol=0.25,delay=0){
   try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    if(!BUS){ BUS=AC.createDynamicsCompressor(); BUS.connect(AC.destination); }   // one bus so stacked notes never clip
     const o=AC.createOscillator(), g=AC.createGain();
-    o.type=type; o.frequency.value=freq; o.connect(g); g.connect(AC.destination);
+    o.type=type; o.frequency.value=freq; o.connect(g); g.connect(BUS);
     const t=AC.currentTime+delay; g.gain.setValueAtTime(vol,t);
     g.gain.exponentialRampToValueAtTime(0.001,t+dur); o.start(t); o.stop(t+dur);
   }catch(e){}
@@ -159,9 +170,15 @@ function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0;
 let rng=Math.random;
 function fmtDate(d){ return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
 function todayStr(){ return fmtDate(new Date()); }
-function dailySeed(){ const s=todayStr(); let h=2166136261;
+// The daily is keyed to the UTC day, so every player in every time zone shares one course and one board.
+function utcDay(off){ const d=new Date(Date.now()+(off||0)*86400000);
+  return d.getUTCFullYear()+'-'+(d.getUTCMonth()+1)+'-'+d.getUTCDate(); }
+function dayNum(k){ const p=String(k).split('-'); return Date.UTC(+p[0],(+p[1]||1)-1,+p[2]||1); }
+function hoursToReset(){ const n=new Date();
+  return Math.max(1,Math.ceil((Date.UTC(n.getUTCFullYear(),n.getUTCMonth(),n.getUTCDate()+1)-n.getTime())/3600000)); }
+function dailySeed(){ const s=utcDay(); let h=2166136261;
   for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
-function dailyBestToday(){ return +(localStorage['pulseDaily_'+todayStr()]||0); }
+function dailyBestToday(){ return +(localStorage['pulseDaily_'+utcDay()]||0); }
 
 // ---- progression / cosmetics (storage keys keep the legacy "pulse" prefix so progress survives the rename) ----
 const SKINS=[
@@ -220,10 +237,10 @@ function renderSkinRow(){
     b.onclick=e=>{ e.stopPropagation(); if(locked) return; skinIdx=i; localStorage.pulseSkin=i; renderSkinRow(); };
     row.appendChild(b); });
 }
-let dailyMode=false;
+let dailyMode=!dailyBestToday();     // the first run of each day is the daily: one shared course, one board
 function refreshDailyBtn(){ const b=$('dailyBtn');
   if(b){ b.className=dailyMode?'on':''; b.textContent=dailyMode?'DAILY ✓ (2×)':'DAILY'; }
-  $('mode').textContent = dailyMode ? ('DAILY · '+todayStr()+(rivalTarget?(' · VS '+rivalTarget):(dailyBestToday()?(' · BEST '+dailyBestToday()):''))) : ''; }
+  $('mode').textContent = dailyMode ? ('DAILY · '+utcDay()+(rivalTarget?(' · VS '+rivalTarget):(dailyBestToday()?(' · BEST '+dailyBestToday()):''))) : ''; }
 function wireModeButtons(){
   const db=$('dailyBtn'); if(db) db.onclick=e=>{ e.stopPropagation();
     dailyMode=!dailyMode; if(!dailyMode) rivalTarget=0; refreshDailyBtn(); };
@@ -237,51 +254,78 @@ function wireModeButtons(){
 }
 
 // ---- shared daily leaderboard + ghost racing ----
-// Rows hold only ids and scores; names are resolved per viewer at render time.
+// Rows hold only ids and scores; names are resolved per viewer and never stored.
 function fmtGhostBtn(b){ if(b) b.textContent='👻 '+(['OFF','LEADER','ME'][ghostMode]); }
 function esc(s){ const d=document.createElement('div'); d.textContent=String(s); return d.innerHTML; }
+function myRank(){ const i=boardRows.findIndex(r=>r.id===myId); return i<0?0:i+1; }
 async function initCaps(){
   try{
-    if(!(window.claude&&window.claude.use)) return;
+    if(!(window.claude&&window.claude.use)){ renderBoard(); return; }
     DB=await window.claude.use('db'); USER=await window.claude.use('user');
     if(USER){ try{ myId=await USER.id(); }catch(e){} }
-    await refreshBoard(); renderBoard();
-  }catch(e){}
+    await refreshBoard();
+    try{                                                   // were you passed while you were away?
+      const seen=JSON.parse(localStorage.pulseRank||'null'), r=myRank();
+      if(seen&&seen.d===utcDay()&&r&&seen.r&&r>seen.r){
+        const by=boardRows[seen.r-1];
+        rankNote='▼ passed by '+((by&&boardNames[by.id])||'a rival')+' — you are #'+r+' now';
+      }
+      if(r) localStorage.pulseRank=JSON.stringify({d:utcDay(),r:r});
+    }catch(e){}
+    renderBoard();
+  }catch(e){ renderBoard(); }
 }
 async function refreshBoard(){
   if(!DB) return;
   try{
-    const snap=await DB.collection('daily').where('date','==',todayStr()).limit(200).get();
-    boardRows=snap.docs.filter(d=>d.exists).map(d=>Object.assign({id:d.id},d.data()))
-      .filter(r=>typeof r.score==='number').sort((a,b)=>b.score-a.score);
+    const snap=await DB.collection('daily').limit(500).get();
+    const all=snap.docs.filter(d=>d.exists).map(d=>Object.assign({id:d.id},d.data()));
+    const t=utcDay(), y=utcDay(-1), desc=(a,b)=>b.score-a.score;
+    boardRows=all.filter(r=>r.date===t&&typeof r.score==='number').sort(desc);
+    boardY=all.map(r=>({id:r.id,score:r.date===y?r.score:(r.hist?r.hist[y]:undefined)}))
+      .filter(r=>typeof r.score==='number').sort(desc);
     boardAt=Date.now();
+    const ids=[...new Set(boardRows.slice(0,25).concat(boardY.slice(0,1)).map(r=>r.id))];
+    if(USER&&ids.length){ const ps=await USER.profiles(ids);
+      ids.forEach(i=>{ boardNames[i]=(ps[i]&&ps[i].name)||''; }); }
   }catch(e){}
 }
-async function renderBoard(){
-  const el=$('board'); if(!el) return;
-  if(!DB||!boardRows.length){ el.innerHTML=''; return; }
-  const top=boardRows.slice(0,5);
-  let names={};
-  try{ if(USER) names=await USER.profiles(top.map(r=>r.id)); }catch(e){}
-  const box=$('board'); if(!box) return;                 // the screen may have been rebuilt while awaiting
-  const myRank=boardRows.findIndex(r=>r.id===myId);
-  let html='<div class="bhead">TODAY\'S DAILY · TOP '+top.length+'</div>';
-  top.forEach((r,i)=>{ const me=r.id===myId;
-    const nm=me?'you':((names[r.id]&&names[r.id].name)||'Someone');
-    html+='<div class="brow'+(me?' me':'')+'"><span>#'+(i+1)+' '+esc(nm)+'</span><b>'+(+r.score)+'</b></div>'; });
-  if(myRank>=5) html+='<div class="brow me"><span>#'+(myRank+1)+' you</span><b>'+(+boardRows[myRank].score)+'</b></div>';
+function renderBoard(){
+  const box=$('board'); if(!box) return;
+  const y=utcDay(-1);
+  let html='';
+  if(DB){
+    html+='<div class="bhead">TODAY\'S DAILY · RESETS IN '+hoursToReset()+'H</div>';
+    if(rankNote) html+='<div class="bnote hot">'+esc(rankNote)+'</div>';
+    const top=boardRows.slice(0,5), mr=myRank();
+    top.forEach((r,i)=>{ const me=r.id===myId;
+      html+='<div class="brow'+(me?' me':'')+'"><span>#'+(i+1)+' '+esc(me?'you':(boardNames[r.id]||'Someone'))+'</span><b>'+(+r.score)+'</b></div>'; });
+    if(mr>5) html+='<div class="brow me"><span>#'+mr+' you</span><b>'+(+boardRows[mr-1].score)+'</b></div>';
+    if(!top.length) html+='<div class="bnote">no scores yet today — be the first</div>';
+    if(!canPost) html+='<div class="bnote">viewing only: scores post for members of the owner\'s organisation</div>';
+    if(boardY.length){ const w=boardY[0], yi=boardY.findIndex(r=>r.id===myId);
+      html+='<div class="bnote">Yesterday: 👑 '+esc(w.id===myId?'you':(boardNames[w.id]||'Someone'))+' '+(+w.score)+(yi>0?' · you #'+(yi+1):'')+'</div>'; }
+  } else {
+    const ly=+(localStorage['pulseDaily_'+y]||0);          // offline: yesterday's self is the rival
+    if(ly) html+='<div class="bnote">Yesterday\'s daily: '+ly+(dailyBestToday()?' · today '+dailyBestToday():' · beat it today')+'</div>';
+  }
   box.innerHTML=html;
 }
 async function submitDaily(finalScore,trace,scores){
   if(!DB||!myId||finalScore<1) return;
   try{
-    const ref=DB.collection('daily').doc(myId);
+    const ref=DB.collection('daily').doc(myId), t=utcDay();
     const cur=await ref.get();
     const d=cur.exists?cur.data():null;
-    if(!d||d.date!==todayStr()||finalScore>(+d.score||0)){   // write only when today's best improves
-      await ref.set({date:todayStr(),score:finalScore,ts:Date.now()});
-      await DB.collection('ghosts').doc(myId).set({date:todayStr(),score:finalScore,trace:trace,scores:scores});
-    }
+    if(d&&d.date===t&&finalScore<=(+d.score||0)) return;    // write only when today's best improves
+    const hist=Object.assign({},(d&&d.hist)||{});
+    if(d&&d.date&&d.date!==t&&typeof d.score==='number') hist[d.date]=d.score;   // the day before is remembered
+    const keep={};
+    Object.keys(hist).sort((a,b)=>dayNum(b)-dayNum(a)).slice(0,7).forEach(k=>{ keep[k]=hist[k]; });
+    try{
+      await ref.set({date:t,score:finalScore,ts:Date.now(),hist:keep});
+      await DB.collection('ghosts').doc(myId).set({date:t,score:finalScore,trace:trace,scores:scores});
+    }catch(e){ canPost=false; }                             // this viewer may read the board but not write to it
   }catch(e){}
 }
 async function loadGhost(){
@@ -296,7 +340,7 @@ async function loadGhost(){
     const snap=await DB.collection('ghosts').doc(gid).get();
     if(!snap.exists) return;
     const g=snap.data();
-    if(g.date!==todayStr()||!Array.isArray(g.trace)||g.trace.length<4) return;
+    if(g.date!==utcDay()||!Array.isArray(g.trace)||g.trace.length<4) return;
     let nm = gid===myId ? 'you' : 'rival';
     try{ if(USER&&gid!==myId){ const ps=await USER.profiles([gid]); nm=(ps[gid]&&ps[gid].name)||'rival'; } }catch(e){}
     ghost={trace:g.trace,scores:Array.isArray(g.scores)?g.scores:[],score:+g.score||0,id:gid};
@@ -347,14 +391,32 @@ let rivalTarget=0,crowned=false;
 let DB=null,USER=null,myId=null,boardRows=[],boardAt=0;
 let ghostMode=Math.min(2,+(localStorage.pulseGhost||1)),ghost=null,gPtr=0,gsPtr=0,gName='',gchipAcc=0;
 let runT0=0,runTrace=[],runScores=[],traceAcc=0;
-const NOTES=[262,294,330,392,440,523,587,659,784,880];
+let boardY=[],boardNames={},canPost=true,runAbove=null,seedToday=0,deadAt=0,rankNote='';
+// the run is a tune: each hit steps a cursor through a pentatonic phrase in the dot's direction,
+// so reversing plays the melody backwards; a split adds a fifth; each phase lifts the key
+const PHRASES=[
+  [0,2,4,7,9,7,4,2,0,4,7,9,12,9,7,4],
+  [0,4,2,7,4,9,7,12,9,7,4,7,2,4,0,2],
+  [7,4,2,0,2,4,7,9,12,9,7,4,2,4,7,4],
+  [0,7,4,9,7,12,9,7,4,7,2,4,0,2,4,7],
+];
+let phrase=PHRASES[0],cursor=0,hbAlt=false;
+function keyShift(){ return Math.min(10,phase*2); }
+function playNote(step,o){
+  cursor=((cursor+step)%16+16)%16;
+  const f=261.63*Math.pow(2,(phrase[cursor]+keyShift())/12);
+  beep(f,0.12,'triangle',0.24);
+  if(o.split) beep(f*1.4983,0.12,'triangle',0.11);
+  if(o.perfect) beep(f*2,0.16,'sine',0.13,0.03);
+  if(o.gold) beep(f*3,0.08,'sine',0.07,0.02);
+}
 const TICKB=[0.28,0.20,0.13,0.07], TICKF=[470,600,760,950];
 
 function rand(a,b){ return a+Math.random()*(b-a); }
 function angleDiff(a,b){ let d=(a-b)%(Math.PI*2); if(d>Math.PI)d-=Math.PI*2; if(d<-Math.PI)d+=Math.PI*2; return d; }
 function curSpeed(){ return 2.1 + (6.2-2.1)*(1-Math.exp(-hits/55)) + Math.max(0,hits-60)*0.004; }
 function curHalf(){ return 0.13 + 0.29*Math.exp(-hits/120); }
-function effSpeed(){ return speed*(overclockLeft>0?1.6:1)*(dots.length>1?1.25:1); } // split play runs hotter — a wager, not insurance
+function effSpeed(){ return speed*(overclockLeft>0?1.6:1)*(dots.length>1?1.4:1); } // split play runs hotter — a wager, not insurance
 function exitMult(frac){ return Math.min(2.0, 0.8 + 1.2*Math.pow(frac,3)); } // calm centre (no parking lane); edge launches HOT
 function nearestDot(){ let bi=0,bd=1e9;
   dots.forEach((dt,i)=>{ const d=Math.abs(angleDiff(dt.ang,targetA)); if(d<bd){ bd=d; bi=i; } });
@@ -362,11 +424,15 @@ function nearestDot(){ let bi=0,bd=1e9;
 
 function newTarget(){
   eclipseActive=false; cometActive=false;
+  // on the daily, every roll is keyed to the hit number, so the course is identical for everyone
+  // whatever path they take to get there; elsewhere, luck is just luck
+  const dr = dailyMode ? mulberry32((seedToday ^ Math.imul(hits+1,0x9E3779B1))>>>0) : null;
+  const rr = ()=> dr ? dr() : rng();
   const gap=Math.min(Math.PI*0.85, Math.max(0.9, effSpeed()*0.22));
   // targets spawn AHEAD of the acting dot's heading; a REVERSE routes closer-but-tighter
   const ref=dots[Math.min(lastActor,dots.length-1)]||dots[0];
   const clear=gap*(lastRev?0.5:0.8);
-  const roll=()=>ref.ang+ref.dir*( lastRev ? (gap*0.6+rng()*1.0) : (gap+rng()*1.7) );
+  const roll=()=>ref.ang+ref.dir*( lastRev ? (gap*0.6+rr()*1.0) : (gap+rr()*1.7) );
   let a=roll();
   for(let t=0;t<40;t++){
     if(dots.every(dt=>Math.abs(angleDiff(a,dt.ang))>=clear)) break;
@@ -374,20 +440,20 @@ function newTarget(){
   }
   a=((a%(Math.PI*2))+Math.PI*2)%(Math.PI*2);
   targetA=a;
-  targetHalf=curHalf()*(overclockLeft>0?1.5:1)*(TINY?1.15:1)*(shrinkHits>0?0.7:1)*(dots.length>1?0.85:1)*(lastRev?0.9:1);
+  targetHalf=curHalf()*(overclockLeft>0?1.5:1)*(TINY&&!dailyMode?1.15:1)*(shrinkHits>0?0.7:1)*(dots.length>1?0.85:1)*(lastRev?0.9:1);
   tightSpawn=lastRev;
   if(shrinkHits>0) shrinkHits--;
-  gold = tintHits>0 ? true : (rng()<0.14);
+  gold = tintHits>0 ? true : (rr()<0.14);
   if(overclockLeft===0){
-    if(!eclipseUsed && hits>=30 && rng()<0.008){
+    if(!eclipseUsed && hits>=30 && rr()<0.008){
       eclipseActive=true; eclipseUsed=true; gold=false;
       popText($('milestone'),'ECLIPSE',1.5); beep(196,0.5,'sine',0.12);
-    } else if(!cometUsed && hits>=20 && rng()<0.007){
+    } else if(!cometUsed && hits>=20 && rr()<0.007){
       cometActive=true; cometUsed=true;
       popText($('chest'),'☄ COMET · ×10',1.35); chime(659,880);
     } else if(nextOverclock>0 && hits>=nextOverclock){
-      overclockLeft=3; nextOverclock=hits+35+Math.floor(rng()*10);
-      targetHalf=curHalf()*1.5*(TINY?1.15:1);
+      overclockLeft=3; nextOverclock=hits+35+Math.floor(rr()*10);
+      targetHalf=curHalf()*1.5*(TINY&&!dailyMode?1.15:1);
       popText($('milestone'),'OVERCLOCK ×2',1.5);
       beep(TICKF[1],0.06,'square',0.15); beep(TICKF[2],0.06,'square',0.15); beep(TICKF[3],0.09,'square',0.18);
     }
@@ -411,7 +477,9 @@ function newQuest(){
   quest={...q,got:0,start:hits}; updQuestHUD();
 }
 function updQuestHUD(){ const el=$('quest'); if(!el) return;
-  el.textContent = quest ? '◆ '+quest.label+' · '+Math.min(quest.got,quest.need)+'/'+quest.need : ''; }
+  const txt = quest ? '◆ '+quest.label+' · '+Math.min(quest.got,quest.need)+'/'+quest.need : '';
+  if(el.textContent!==txt){ el.textContent=txt; el.style.opacity=1;      // surfaces when it changes, then steps back
+    clearTimeout(el._t); el._t=setTimeout(()=>{ el.style.opacity=''; },2500); } }
 function checkQuest(){
   if(!quest||quest.got<quest.need) return;
   score+=quest.reward; led.quest+=quest.reward; $('score').textContent=score;
@@ -419,10 +487,19 @@ function checkQuest(){
   popText($('combo'),'◆ QUEST · +'+quest.reward,1.25); chime(988,1319); buzz(15);
   newQuest(); updNextGoal();
 }
+function rankTarget(){               // the next player above you on today's board
+  if(!dailyMode||!boardRows.length) return null;
+  const others=boardRows.filter(r=>r.id!==myId);
+  for(let i=others.length-1;i>=0;i--){
+    if(others[i].score>=score) return {score:others[i].score,rank:i+1,name:boardNames[others[i].id]||'Someone'}; }
+  return null;
+}
 function updNextGoal(){ const el=$('nextgoal'); if(!el) return;
   if(rivalTarget>0 && score<=rivalTarget){ el.textContent='👑 VS '+rivalTarget+' · −'+(rivalTarget-score+1); return; }
+  const rt=rankTarget();
+  if(rt){ el.textContent='#'+rt.rank+' '+rt.name+' · −'+(rt.score-score+1); return; }
   const nm=MILESTONES.find(m=>m>score);
-  el.textContent = nm ? ('NEXT '+nm+' · −'+(nm-score)) : ''; }
+  el.textContent = (nm && nm-score<=15) ? ('NEXT '+nm+' · −'+(nm-score)) : ''; }   // only when it is close
 function updZen(){ const el=$('zen'); if(!el) return;
   el.textContent = zen>=3 ? ('☯ ZEN ×'+zen) : (zen>0 ? ('☯ '+zen+'/3') : ''); }
 
@@ -432,12 +509,14 @@ function start(){
   runChests=0; runPerfects=0; runComets=0; runSplits=0;
   eclipseUsed=false; eclipseActive=false; cometUsed=false; cometActive=false;
   overclockLeft=0; recordBroken=false; recordHits=0; palindromesSeen.clear();
-  shields = ascRank(lifetime)>=2 ? 3 : 2;
+  shields = (!dailyMode && ascRank(lifetime)>=2) ? 3 : 2;   // the daily is an even contest: no perks
   dots=[{ang:-Math.PI/2,dir:1}]; particles=[]; shocks=[]; trail=[];
   dyingT=0; timeScale=1; slowmoT=0; hbT=0; tintHits=0;
   milestonesHit.clear();
-  rng = dailyMode ? mulberry32(dailySeed()) : Math.random;
-  qrng = dailyMode ? mulberry32(dailySeed()^0x5bd1e995) : Math.random;
+  seedToday=dailySeed();
+  rng = dailyMode ? mulberry32(seedToday) : Math.random;
+  qrng = dailyMode ? mulberry32(seedToday^0x5bd1e995) : Math.random;
+  phrase=PHRASES[Math.floor(Math.random()*PHRASES.length)]; cursor=0; hbAlt=false; runAbove=null;
   speed=curSpeed();
   nextChest = 8 + Math.floor(rng()*8);
   nextOverclock = 35 + Math.floor(rng()*10);
@@ -473,7 +552,11 @@ function ringBurst(color){ const n=TINY?20:40;
   for(let i=0;i<n;i++){ const a=i/n*Math.PI*2, sp=rand(2,6);
     particles.push({x:CX+Math.cos(a)*R,y:CY+Math.sin(a)*R,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1.2,color,r:rand(2,4)}); } }
 function shockwave(x,y,color){ shocks.push({x,y,r:R*0.12,a:0.9,color}); }
-function popText(el,txt,scale){ el.textContent=txt; el.style.transition='none'; el.style.opacity=1;
+function popText(el,txt,scale,prio=1){
+  const nowT=performance.now();
+  if(el._until>nowT && prio<(el._prio||0)) return;       // a lesser message never erases a greater one
+  el._prio=prio; el._until=nowT+600;
+  el.textContent=txt; el.style.transition='none'; el.style.opacity=1;
   el.style.transform='scale('+scale+')';
   requestAnimationFrame(()=>{ el.style.transition='all .6s ease-out'; el.style.opacity=0; el.style.transform='scale(1)'; }); }
 
@@ -487,8 +570,8 @@ function checkPalindrome(){
   if(score<100 || palindromesSeen.has(score)) return;
   const s=String(score);
   const pal = s===[...s].reverse().join(''), rep = /^(\d)\1+$/.test(s);
-  if(pal||rep){ palindromesSeen.add(score);
-    popText($('chest'), score===404?'✦ SCORE NOT FOUND ✦':'✦ PALINDROME '+score+' ✦',1.25);
+  if(rep||score===404||(pal&&s.length>=4)){ palindromesSeen.add(score);    // rare on purpose: repdigits, 404, four-digit mirrors
+    popText($('chest'), score===404?'✦ SCORE NOT FOUND ✦':'✦ PALINDROME '+score+' ✦',1.25,0);
     beep(660,0.07,'sine',0.16); beep(880,0.09,'sine',0.14); }
 }
 
@@ -497,7 +580,8 @@ function openChest(){
   const px=CX+Math.cos(anchor.ang)*R, py=CY+Math.sin(anchor.ang)*R;
   const lucky = dailyMode && runChests===0;
   const jp = lucky?0.15:0.05;
-  const roll=rng(); let txt;
+  const cr = dailyMode ? mulberry32((seedToday ^ Math.imul(hits+1,0x85EBCA6B) ^ 0x51ed270b)>>>0) : null;
+  const roll=cr?cr():rng(); let txt;
   if(roll<jp){ jackpotHits=10; txt=lucky?'✦ LUCKY DAY · JACKPOT ×2':'✦ JACKPOT · ×2 FOR 10 HITS'; }
   else if(roll<0.40 && shields<3){ shields++; updShields(); txt='✦ CHEST +1 SHIELD 🛡'; }
   else if(roll<0.70){ const b=15+combo; score+=b; led.chest+=b; txt='✦ CHEST +'+b+' PTS'; }
@@ -509,7 +593,7 @@ function openChest(){
   popText($('chest'), txt, 1.3);
   burst(px,py, roll<jp?'#ffd23f':'#7CFC9E', roll<jp?32:22);
   flash=0.35; flashColor=roll<jp?'255,210,63':'124,252,158'; chime(880,1174);
-  nextChest = hits + 8 + Math.floor(rng()*8);
+  nextChest = hits + 8 + Math.floor((cr?cr():rng())*8);
 }
 
 function loseDot(i,px,py){
@@ -528,8 +612,7 @@ function loseDot(i,px,py){
 function tap(){
   if(state===S.menu){ start(); return; }
   if(state===S.dead){
-    if(!tallyDone){ if(tallySkip) tallySkip(); return; }  // first tap completes the tally
-    if(performance.now()-tallyEndT<350) return;           // debounce so the skip-tap can't restart
+    if(performance.now()-deadAt<400) return;              // swallow the frantic last tap; after that, one tap replays
     reset(); return; }
   if(state===S.dying) return;
   if(state!==S.play) return;
@@ -547,10 +630,11 @@ function tap(){
     // the palindrome rule: before the midpoint bounces you back; past it carries you on
     const beforeMid = angleDiff(targetA,dot.ang)*dot.dir > 0;
     let didReverse=false, didSplit=false;
-    if(perfect && dots.length===1){
+    const rookie = best<25 && hits<10;                  // first-session grace: the opening teaches before it tests
+    if(perfect && dots.length===1 && !rookie){
       didSplit=true;                                      // dead centre: the dot splits in two
       dots=[{ang:dot.ang,dir:1},{ang:dot.ang,dir:-1}];
-      splitRun=0; try{ $('shields').style.opacity=.25; }catch(e){}
+      splitRun=0;
     } else if(!perfect && beforeMid){ dot.dir*=-1; didReverse=true; reversalGlow=1;
       beep(494,0.05,'sine',0.13); beep(349,0.1,'sine',0.13,0.07); }  // a TRUE falling two-note: you turned around
     hits++; combo++; comboPeak=Math.max(comboPeak,combo); sinceShield++;
@@ -559,9 +643,11 @@ function tap(){
     if(jackpotHits>0){ gain*=2; jackpotHits--; }
     if(overclockLeft>0){ gain*=2; overclockLeft--; }
     if(dots.length>1 && !didSplit){ gain*=1.5; }          // split pay: the wager's carrot
-    if(didReverse){ gain*=1.3; }                          // reverse pay: closer-and-tighter earns it
     if(wasComet){ gain*=10; }
-    gain=Math.round(gain); score+=gain;
+    gain=Math.round(gain);
+    if(didReverse) gain=Math.ceil(gain*1.3);              // reverse pay, rounded UP so it is real at every combo
+    score+=gain;
+    playNote(didSplit?1:dot.dir,{split:dots.length>1,perfect:perfect,gold:gold});
     led[perfect?'perf':'hit']+=gain;
     if(wasEclipse){ const bounty=25+combo; score+=bounty; led.ecl+=bounty;
       popText($('chest'),'☀ +'+(gain+bounty),1.4);
@@ -572,8 +658,7 @@ function tap(){
       chime(523,784); beep(1046,0.25,'sine',0.2); }
     $('score').textContent=score;
     if(!revenged && lastRunScore>=10 && score>lastRunScore && best!==lastRunScore){
-      revenged=true; score+=10; led.rev+=10; $('score').textContent=score;
-      popText($('combo'),'⚔ REVENGED · +10',1.2); beep(587,0.1,'sine',0.2); beep(880,0.14,'sine',0.18); buzz(15); }
+      revenged=true; score+=10; led.rev+=10; $('score').textContent=score; }   // quiet: it shows in the tally
     if(rivalTarget>0 && !crowned && score>rivalTarget){
       crowned=true; statCrowns++; localStorage.pulseCrowns=statCrowns;
       popText($('milestone'),'👑 CROWN TAKEN',1.5); flash=0.5; flashColor='255,210,63'; chime(1318,1760); buzz([20,40,20]); }
@@ -587,6 +672,15 @@ function tap(){
       else if(quest.type==='splitperfect'&&perfect&&dots.length>1&&!didSplit) quest.got++;
       else if(quest.type==='clean') quest.got=hits-quest.start;
       updQuestHUD(); checkQuest(); }
+    if(dailyMode && boardRows.length){                    // rank is an event: passing a named player mid-run
+      const others=boardRows.filter(r=>r.id!==myId);
+      const above=others.filter(r=>r.score>=score).length;
+      if(runAbove!==null && above<runAbove){
+        const p=others[above];
+        popText($('combo'),'▲ #'+(above+1)+' · passed '+((p&&boardNames[p.id])||'a rival'),1.25,3);
+        chime(1175,1568); buzz([15,30,15]); }
+      runAbove=above;
+    }
     updNextGoal();
     if(!recordBroken && best>0 && score>best){
       recordBroken=true; slowmoT=0.3; slowmoS=0.3;
@@ -598,7 +692,6 @@ function tap(){
     if(recordBroken) recordHits++;
     // split streak + zen lane
     if(dots.length>1 && !didSplit){ splitRun++; runSplitBest=Math.max(runSplitBest,splitRun);
-      if(splitRun%5===0){ popText($('combo'),'⧉ SURVIVED ×'+splitRun,1.2); chime(880,1046); }
       if(!splitRecordShown && runSplitBest>statSplitBest && runSplitBest>=5){ splitRecordShown=true;
         popText($('combo'),'⧉ BEST RUN!',1.2); chime(988,1175); } }
     if(frac<0.25){ zen++; runZenBest=Math.max(runZenBest,zen);
@@ -609,8 +702,7 @@ function tap(){
     } else zen=0;
     updZen();
     speed = curSpeed()*exitMult(frac);                    // calm centre exits, hot edge exits
-    if(frac>0.8){ shrinkHits=1;                           // deterministic: every outer-edge tap tightens the next arc
-      popText($('chest'),'⌁ TIGHT ARC',1.2); beep(233,0.15,'sawtooth',0.14); }
+    if(frac>0.8 && dots.length===1) shrinkHits=1;         // an outer-edge tap tightens the next arc — shown, never scolded
     burst(px,py, gold?'#ffd23f':(perfect?skin().arc:'#7CFC9E'), gold?26:(perfect?16:10));
     shake=perfect?9:5; ringPulse=1; if(!wasEclipse&&!wasComet){ flash=gold?0.5:0; flashColor='255,255,255'; }
     if(didSplit){
@@ -637,12 +729,8 @@ function tap(){
         flash=0.5; flashColor='255,255,255'; chime(1568,2093);
       } else if(!didSplit){
         shockwave(px,py,skin().arc); slowmoT=0.07; slowmoS=0.05;
-        chime(784+perfectStreak*40, 1046+perfectStreak*40);
       }
-    } else { perfectStreak=0; buzz(8);
-      if(gold) beep(880+combo*6,0.09,'triangle',0.28);
-      else beep(NOTES[Math.min(combo-1,NOTES.length-1)],0.1,'triangle',0.26); }
-    if(combo>0&&combo%5===0){ popText($('combo'),'COMBO ×'+(1+Math.floor(combo/5)*0.5),1.25); beep(990,0.14,'sine',0.2); }
+    } else { perfectStreak=0; buzz(8); }
     if(sinceShield>=25 && shields<3){ shields++; sinceShield=0; updShields(); beep(1200,0.12,'sine',0.18); }
     if(hits>=nextChest) openChest();
     const ph=Math.floor(hits/50);
@@ -654,7 +742,9 @@ function tap(){
     newTarget();
   } else if(dots.length>1 && d<=targetHalf*1.4){
     loseDot(ji,px,py);                        // near-miss while split: the wager takes a dot
-  } else if(dots.length===1 && d<=targetHalf*1.4 && shields>0){
+  } else if(dots.length>1 && shields>0){
+    shields--; updShields(); loseDot(ji,px,py);   // wild tap while split: a shield AND a dot, but the run lives
+  } else if(dots.length===1 && shields>0 && (d<=targetHalf*1.4 || (best<25 && hits<10))){
     shields--; updShields(); combo=Math.floor(combo/2); perfectStreak=0;
     burst(px,py,'#5ac8ff',10); shake=6; ringPulse=1; flash=0.22; flashColor='90,200,255';
     slowmoT=0.35; slowmoS=0.35; beep(200,0.18,'square',0.24); beep(150,0.12,'square',0.16); buzz(25);
@@ -662,7 +752,7 @@ function tap(){
     if(quest&&quest.type==='clean'){ quest.start=hits; quest.got=0; updQuestHUD(); }
     newTarget();
   } else {
-    die(px,py);                               // a wild tap kills — split or not: the wager has a downside
+    die(px,py);                               // out of shields, a wild tap ends the run
   }
 }
 
@@ -776,7 +866,7 @@ function runTally(items,total,isBest){
 }
 
 function finalizeDeath(){
-  state=S.dead;
+  state=S.dead; deadAt=performance.now();
   const isBest=score>best;
   if(score>=10) bumpStreak();
   const ascBefore=ascRank(lifetime);
@@ -790,56 +880,77 @@ function finalizeDeath(){
   if(runZenBest>statZenBest){ statZenBest=runZenBest; localStorage.pulseZenBest=statZenBest; }
   lastRunScore=score; localStorage.pulseLast=score;
   if(isBest){ best=score; localStorage.pulseBest=best; }
+  refreshMeta();                                            // the HUD's best and tier follow a new record
   let dailyLine='';
-  if(dailyMode){ const dk='pulseDaily_'+todayStr();
+  const rankBefore=myRank();
+  if(dailyMode){ const dk='pulseDaily_'+utcDay();
     if(score>+(localStorage[dk]||0)) localStorage[dk]=score;
-    dailyLine=' &nbsp;·&nbsp; DAILY BEST '+localStorage[dk];
-    // post to the shared board (only if it improves today's best), then redraw the standings
+    dailyLine=' &nbsp;·&nbsp; daily best '+localStorage[dk];
+    // post to the shared board (only if it improves today's best), then make the new rank an event
     const fs=score, tr=runTrace.slice(0,5000), sc=runScores.slice(0,1200);
-    submitDaily(fs,tr,sc).then(()=>refreshBoard()).then(()=>renderBoard()).catch(()=>{}); }
+    submitDaily(fs,tr,sc).then(()=>refreshBoard()).then(()=>{
+      rankNote=''; renderBoard();
+      const r=myRank(); if(!r) return;
+      try{ localStorage.pulseRank=JSON.stringify({d:utcDay(),r:r}); }catch(e){}
+      const el=$('rankline'); if(!el) return;
+      const nxt=r>1?boardRows[r-2]:null;
+      if(!rankBefore){ el.textContent='▲ on today\'s board at #'+r; chime(988,1319); }
+      else if(r<rankBefore){ el.textContent='▲ #'+rankBefore+' → #'+r+' today'; chime(988,1319); }
+      else el.textContent='#'+r+' today'+(nxt?(' · '+(nxt.score-boardRows[r-1].score+1)+' to pass '+(boardNames[nxt.id]||'#'+(r-1))):' · top of the board');
+    }).catch(()=>{}); }
   justUnlocked=SKINS.filter((s,i)=>i>0&&unlocked(i)&&!unlockedBefore.has(i)).map(s=>s.name);
   snapshotUnlocks();
   let head,sub;
   if(isBest&&score>0){ head='NEW BEST!'; sub='You beat your record'; }
-  else if(best>0&&score>=best*0.8&&score<best){ head='SO CLOSE'; sub=(best-score)+' from your BEST'; }
+  else if(best>0&&score>=best*0.8&&score<best){ head='SO CLOSE'; sub=(best-score)+' from your best'; }
   else { head='GAME OVER'; sub='Best '+best; }
   const mult=(1+Math.floor(comboPeak/5)*0.5).toFixed(1);
+  const goldCss='color:#ffd23f;-webkit-text-fill-color:#ffd23f';
+  let ghostLine='';
+  if(ghost){ const dlt=score-ghost.score;
+    ghostLine=`<p style="opacity:.75">👻 ${dlt>0?('beat '+esc(gName)+'’s run by '+dlt):(esc(gName)+'’s run finished '+(-dlt)+' ahead')}</p>`; }
+  const record=isBest&&score>0;
+  const shareBtnHtml=`<button data-ui id="shareBtn"${record?' class="pulse"':''}>SHARE CARD</button>`;
   const m=$('msg'); m.classList.remove('hidden');
+  // one breath: the score, what the game has to say about it, and a way back in. Everything else waits behind MORE.
   m.innerHTML=
     `<div class="wordmark">PALINDROME</div>`+
     `<h1 class="go-head">${head}</h1>`+
     `<p class="big go-score" id="gscore">${score}</p>`+
     `<div id="tally"></div>`+
-    `<p style="opacity:.6">${sub} &nbsp;·&nbsp; ${tierFor(score)} &nbsp;·&nbsp; combo peaked ×${mult}${runSplits?' &nbsp;·&nbsp; ⧉ split ×'+runSplits+(runSplitBest?' (ran '+runSplitBest+' hits)':''):''}${runZenBest>=3?' &nbsp;·&nbsp; ☯ zen ×'+runZenBest:''}${dailyLine}</p>`+
-    `<p style="opacity:.45;font-style:italic;font-size:.92em">“${epitaph(isBest)}”</p>`+
-    (rivalTarget?`<p style="color:${score>rivalTarget?'#ffd23f':'#8cdcff'};-webkit-text-fill-color:${score>rivalTarget?'#ffd23f':'#8cdcff'};opacity:.85">${score>rivalTarget?'👑 CROWN TAKEN · ':'⚔ crown missed · '}${score} v ${rivalTarget}</p>`:'')+
-    (recordBroken?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;opacity:.85">⚡ held the record zone for ${recordHits} hits</p>`:'')+
+    `<p class="epi">“${epitaph(isBest)}”</p>`+
+    `<p style="opacity:.55">${sub}${dailyLine}</p>`+
+    `<p class="rankline" id="rankline"></p>`+
+    ghostLine+
+    (rivalTarget?`<p style="${score>rivalTarget?goldCss:'color:#8cdcff;-webkit-text-fill-color:#8cdcff'};opacity:.85">${score>rivalTarget?'👑 CROWN TAKEN · ':'⚔ crown missed · '}${score} v ${rivalTarget}</p>`:'')+
+    (recordBroken?`<p style="${goldCss};opacity:.85">⚡ held the record zone for ${recordHits} hits</p>`:'')+
     (runComets?`<p style="color:#8cdcff;-webkit-text-fill-color:#8cdcff;opacity:.85">☄ caught a comet</p>`:'')+
-    (justUnlocked.length?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;margin-top:12px">✦ SKIN UNLOCKED: ${justUnlocked.join(', ')}</p>`:'')+
-    (ascNow>ascBefore?`<p style="color:#ffd23f;-webkit-text-fill-color:#ffd23f;margin-top:10px">✦ ASCENSION ${ascNow} REACHED${ascPerkHint(ascNow)}</p>`:'')+
-    `<p style="opacity:.5;font-size:.9em;margin-top:12px">🔥 Day ${streak} &nbsp;·&nbsp; Lifetime ${lifetime} &nbsp;·&nbsp; 📦 ${statChests} &nbsp;·&nbsp; 🎯 ${statPerfects} &nbsp;·&nbsp; ◆ ${questsDone} &nbsp;·&nbsp; ⧉ ${statSplits}${statComets?' &nbsp;·&nbsp; ☄ '+statComets:''}</p>`+
-    `<div id="board"></div>`+
-    `<div class="row" data-ui>`+
-      `<button data-ui id="shareBtn">SHARE CARD</button>`+
-      `<button data-ui id="copyBtn">COPY TEXT</button>`+
-      `<button data-ui id="againBtn">PLAY AGAIN ▸</button>`+
+    (justUnlocked.length?`<p style="${goldCss}">✦ SKIN UNLOCKED: ${justUnlocked.join(', ')}</p>`:'')+
+    (ascNow>ascBefore?`<p style="${goldCss}">✦ ASCENSION ${ascNow} REACHED${ascPerkHint(ascNow)}</p>`:'')+
+    `<div class="row" data-ui>`+(record?shareBtnHtml:'')+
+      `<button data-ui id="againBtn">PLAY AGAIN ▸</button><button data-ui id="moreBtn">MORE</button></div>`+
+    `<div id="more" class="hidden">`+
+      `<p style="opacity:.6">${tierFor(score)} &nbsp;·&nbsp; combo peaked ×${mult}${runSplits?' &nbsp;·&nbsp; ⧉ split ×'+runSplits+(runSplitBest?' (ran '+runSplitBest+' hits)':''):''}${runZenBest>=3?' &nbsp;·&nbsp; ☯ zen ×'+runZenBest:''}</p>`+
+      `<p style="opacity:.5;font-size:.9em">🔥 Day ${streak} &nbsp;·&nbsp; Lifetime ${lifetime} &nbsp;·&nbsp; 📦 ${statChests} &nbsp;·&nbsp; 🎯 ${statPerfects} &nbsp;·&nbsp; ◆ ${questsDone} &nbsp;·&nbsp; ⧉ ${statSplits}${statComets?' &nbsp;·&nbsp; ☄ '+statComets:''}</p>`+
+      `<div id="board"></div>`+
+      `<div class="row" data-ui>`+(record?'':shareBtnHtml)+`<button data-ui id="copyBtn">COPY TEXT</button></div>`+
+      `<div class="row" data-ui><button data-ui id="dailyBtn">DAILY</button><button data-ui id="vsBtn">⚔ VS</button><button data-ui id="ghostBtn">👻</button></div>`+
+      `<div class="row" id="skinrow" data-ui></div>`+
     `</div>`+
-    `<div class="row" data-ui><button data-ui id="dailyBtn">DAILY</button><button data-ui id="vsBtn">⚔ VS</button><button data-ui id="ghostBtn">👻</button></div>`+
-    `<div class="row" id="skinrow" data-ui></div>`+
-    `<p style="opacity:.35;font-size:.85em;margin-top:16px">tap anywhere to retry</p>`;
+    `<p style="opacity:.35;font-size:.85em;margin-top:14px">tap anywhere to play again</p>`;
   renderSkinRow(); wireModeButtons(); refreshDailyBtn(); renderBoard();
   $('againBtn').onclick=e=>{ e.stopPropagation(); reset(); };
+  $('moreBtn').onclick=e=>{ e.stopPropagation(); $('more').classList.toggle('hidden'); };
   $('shareBtn').onclick=e=>{ e.stopPropagation(); shareCard($('shareBtn')); };
-  if(isBest&&score>0) $('shareBtn').classList.add('pulse');   // the record-break death is THE share moment
   $('copyBtn').onclick=e=>{ e.stopPropagation();
     const sup = runSplitBest>=5?('⧉ survived '+runSplitBest+' split'):(runZenBest>=4?('☯ zen ×'+runZenBest):('combo ×'+mult));
     const txt = crowned
-      ? `PALINDROME 👑 Took your crown on DAILY ${todayStr()} — ${score} v ${rivalTarget}. Reclaim it?${statCrowns>1?' (crowns ×'+statCrowns+')':''}`
+      ? `PALINDROME 👑 Took your crown on DAILY ${utcDay()} — ${score} v ${rivalTarget}. Reclaim it?${statCrowns>1?' (crowns ×'+statCrowns+')':''}`
       : (dailyMode
-        ? `PALINDROME DAILY ${todayStr()} — ${score} pts · ${tierFor(score)}. Same orbit, same chests, zero excuses. Beat me.`
+        ? `PALINDROME DAILY ${utcDay()} — ${score} pts · ${tierFor(score)}. Same course for everyone, zero excuses. Beat me.`
         : `PALINDROME · ${score} — ${tierFor(score)} · ${sup} 🎯 can you beat it?`);
     try{ navigator.clipboard.writeText(txt); $('copyBtn').textContent='COPIED ✓'; }catch(_){ $('copyBtn').textContent=txt; } };
-  // the tally — the run adds itself up
+  // the tally plays as the run adds itself up; it never blocks the way back in
   const items=[];
   if(led.hit) items.push(['TAPS ×'+(hits-runPerfects),led.hit]);
   if(led.perf) items.push(['PERFECTS ×'+runPerfects,led.perf]);
@@ -848,7 +959,7 @@ function finalizeDeath(){
   if(led.zen) items.push(['☯ ZEN',led.zen]);
   if(led.ecl) items.push(['☀ ECLIPSE',led.ecl]);
   if(led.rev) items.push(['⚔ REVENGE',led.rev]);
-  if(items.length&&score>0){ $('gscore').textContent='0'; runTally(items,score,isBest&&score>0); }
+  if(items.length&&score>0){ $('gscore').textContent='0'; runTally(items,score,record); }
   else tallyDone=true;
 }
 
@@ -882,7 +993,8 @@ function frame(now){
       beep(TICKF[tickIdx],0.035,'sine',(eclipseActive?0.02:0.06)+tickIdx*0.012); tickIdx++; }
     if(tti>0.4) tickIdx=0;
     if(!eclipseActive){ hbT+=rdt; const beatT=Math.max(0.30,0.85-(speed-2.1)*0.08);
-      if(hbT>=beatT){ hbT=0; beep(120,0.09,'sine',0.06); beep(96,0.12,'sine',0.05); } }
+      if(hbT>=beatT){ hbT=0; const root=130.81*Math.pow(2,keyShift()/12);
+        beep(hbAlt?root*0.749:root,0.16,'sine',0.07); hbAlt=!hbAlt; } }   // the heartbeat is the bass line
     if(ascRank(lifetime)>=3 || cometActive){
       dots.forEach(dot=>trail.push({x:CX+Math.cos(dot.ang)*R,y:CY+Math.sin(dot.ang)*R,a:cometActive?0.8:0.5}));
       const cap=(cometActive?22:14)*dots.length;
@@ -991,11 +1103,9 @@ function frame(now){
         ga=((a0+da*f)/255)*Math.PI*2;
       } else if(gPtr+1<tr.length && t10<=tr[gPtr]+15){ ga=(tr[gPtr+1]/255)*Math.PI*2; }
       if(ga!=null){
-        const gx=CX+Math.cos(ga)*R, gy=CY+Math.sin(ga)*R;
-        ctx.globalAlpha=0.4; ctx.strokeStyle='#ffd23f'; ctx.lineWidth=2;
-        ctx.beginPath(); ctx.arc(gx,gy,9,0,Math.PI*2); ctx.stroke();
-        ctx.globalAlpha=0.18; ctx.fillStyle='#ffd23f';
-        ctx.beginPath(); ctx.arc(gx,gy,9,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
+        const gr=R-22, gx=CX+Math.cos(ga)*gr, gy=CY+Math.sin(ga)*gr;   // its own inner lane and its own colour
+        ctx.globalAlpha=0.6; ctx.fillStyle='#c9b6ff';
+        ctx.beginPath(); ctx.arc(gx,gy,5,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
       }
     }
     // bracket the dot the game will judge next (two-dot clarity, hysteresis-stable)

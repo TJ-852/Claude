@@ -13,13 +13,20 @@ dependencies, no server — open `index.html` in any browser and play.
     the way it came.
   - Tap **after the midpoint** → the dot **carries on**.
   - Tap **dead centre** → the dot **⧉ SPLITS** into two dots orbiting in
-    opposite directions. Play continues with both until a bad tap costs you a
-    dot — with two dots live, mistakes lose a dot instead of the run.
+    opposite directions. Split play runs faster on tighter arcs and pays ×1.5.
+    A near-miss costs a dot; a wild tap costs a dot and a shield, and only
+    ends the run when you have no shields left.
 - **Exit speed is proportional to your distance from the midpoint**: centre
   taps leave calm and slow, edge taps leave hot and fast. Precision is the
   brake; sloppiness is the accelerator.
 - With one dot, a near-miss spends a **shield** 🛡 (regenerate every 25 hits);
   a wild miss ends the run.
+- **Your first runs are gentler**: until your best reaches 25, the first ten
+  hits of a run cannot split the dot and a wild tap there costs a shield
+  instead of the run.
+- **The run is a tune.** Each hit steps through a pentatonic phrase in the
+  dot's direction, so reversing plays the melody backwards; a split adds a
+  fifth, each phase lifts the key, and the heartbeat is the bass line.
 - Rising ticks telegraph each strike; the dot grows and brightens as it closes in.
 
 ## Scoring
@@ -71,16 +78,27 @@ Everything persists in `localStorage`.
 
 ## Leaderboard & ghosts
 
+The first run of each day defaults to the **daily**, which is built to be a
+fair contest: it is keyed to the UTC day, every roll is derived from the
+seed and the hit number (so the course is the same for everyone whatever
+path they take through it), and perks and small-screen arc widening are off.
+
 When hosted as a claude.ai artifact (with the `db` and `user` capabilities),
 daily runs post to a **shared leaderboard**: today's top five on the title
-and death screens, your own rank if you're outside it. Rows store only an
+screen and behind MORE on the death screen, your own rank if you're outside
+it, and a countdown to the reset. Rank is an event: the next player above
+you is a live target on the HUD, passing them mid-run is announced, the
+death screen shows your rank change, and the title screen tells you if you
+were passed while away. Each row keeps a seven-day history, so yesterday's
+winner and your place are remembered. Rows store only an
 opaque id and a score — names are resolved per viewer at render time, never
 stored. A score is written only when it beats your own best for the day.
 
 Every daily run is also **recorded** (dot position every 150 ms, score at
 each hit) and posted alongside the score, so it can be raced: the 👻 button
-cycles LEADER / ME / OFF, and a gold ghost ring shows exactly where that run
-was at this moment of yours, with a live pace chip ("👻 Sam 112 · +8").
+cycles LEADER / ME / OFF, and a small violet ghost on an inner lane shows
+where that run was at this moment of yours, with a live pace chip
+("👻 Sam 112 · +8") and a verdict on the death screen.
 
 Both are optional layers: opened as a plain file, signed out, or on a watch,
 the game detects the missing capabilities and plays exactly as before.
@@ -103,8 +121,10 @@ outside it can read the board but not write to it.
 
 Every death ends in the run adding itself up: TAPS, PERFECTS, CHESTS,
 QUESTS, ZEN, ECLIPSE, REVENGE count up line by line (rising note per line)
-into the grand total, which slams in with a flash. One tap skips the
-animation; a debounce stops that tap from restarting the run.
+into the grand total, which slams in with a flash. The tally never blocks:
+after a short pause that swallows a frantic last tap, one tap plays again.
+The death screen itself is deliberately short — score, epitaph, play again —
+with stats, the board, sharing, modes and skins behind MORE.
 
 ## Apple Watch
 
