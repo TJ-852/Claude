@@ -1,8 +1,9 @@
-# Palindrome
+# SATIE
 
 A one-tap arcade game in a single self-contained HTML file. No build, no
 dependencies, no server — open `index.html` in any browser and play.
-*(Formerly PULSE; saved progress carries over.)*
+It plays Erik Satie's *Gymnopédie No. 1* as you play, and is named for him.
+*(Formerly Palindrome, and before that PULSE; saved progress carries over.)*
 
 ## How to play
 
@@ -96,12 +97,48 @@ otherwise unaffected.
 - **Record theater** — near your best, a gold ghost dot appears; break the record
   mid-run and it dissolves, time dilates, and your score runs gold to the end.
 - **FLAWLESS** — 8 consecutive perfects shatter the ring in a supernova.
-- **Palindrome scores** — the namesake: palindrome/repdigit scores (121, 222…)
-  earn a "✦ PALINDROME ✦" flourish, and 404 has an opinion.
+- **Palindrome scores** — after the rule the game is built on: repdigit and
+  four-digit mirror scores (222, 1221…) earn a "✦ PALINDROME ✦" flourish,
+  and 404 has an opinion.
 - **Near-milestone drama** — within 3 points of a milestone, its number ghosts
   at ring center, and a NEXT-goal chip always names your next target.
-- **A secret skin** exists. Its trigger is not documented here.
+- **Secret skins** exist, and other things besides. See the spoilers below.
 - The dot blinks mid-run and fidgets if you leave it waiting.
+
+## Easter eggs
+
+None of these is explained in the game.
+
+<details>
+<summary>Spoilers</summary>
+
+- **Lent et douloureux** — the tempo marking on the score ("slow and
+  sorrowful"). Land all of the first eight notes near dead centre and the
+  SATIE! bonus pays double, 176, under that title.
+- **Gymnopédiste** — play the whole piece, all 116 notes, without a slip:
+  888 points, the last chord held, and the hidden **Ivory** skin.
+- **The Velvet Gentleman** — Satie bought seven identical velvet suits and
+  wore nothing else. Seven perfects in a row unlocks the hidden **Velvet** skin.
+- **Umbrellas** — he left a great many behind. Every hundred hits without
+  losing a heart earns a ☂ and 100 points; the count is kept.
+- **Dates** — a score of exactly 1866 (his birth), 1888 (the Gymnopédies)
+  or 1925 (his death) gets its own flourish.
+- **17 May** — on his birthday the title wishes him well and every burst
+  of particles is confetti.
+- **His markings** — most ordinary epitaphs are performance directions
+  Satie wrote on his Gnossiennes ("Open your head.", "Very lost.", "Arm
+  yourself with clairvoyance."), with the French and the piece beneath.
+  They are taken from the Mutopia Project engravings; the English for
+  Nos. 2 and 3 is our own translation.
+- **Furniture music** — Satie's *musique d'ameublement* was written to be
+  ignored. Leave the game-over screen alone for a minute and the left hand
+  of the Gymnopédie plays quietly to itself. (Sound has to have been
+  switched on by a tap first, so it will not start on a fresh title screen.)
+- **Vexations** — a piece to be played 840 times in a row. Your 840th run
+  is acknowledged.
+- **Phantom** — the older secret skin: three perfects landed while split.
+
+</details>
 
 ## Leaderboard & ghosts
 
@@ -170,7 +207,7 @@ the game degrades silently to visual-only feedback.)
 
 ## How it was designed
 
-Built across sixteen iterations by an agent-council design loop: three tester
+Built across eighteen iterations by an agent-council design loop: three tester
 agents (fun, challenge, reward) critique each build independently, an
 orchestrator synthesizes a ranked plan, the next build implements it, and
 every build is verified end-to-end in a real browser before committing.

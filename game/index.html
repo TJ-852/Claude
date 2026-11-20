@@ -1,7 +1,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <meta name="disabled-adaptations" content="watch">
-<title>Palindrome</title>
+<title>Satie</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
   html,body{margin:0;height:100%;background:#0a0a12;overflow:hidden;
@@ -51,6 +51,9 @@
   .go-head{font-size:34px !important;letter-spacing:3px !important}
   #msg .go-score{font-size:54px;margin-top:4px;color:#fff;-webkit-text-fill-color:#fff;opacity:1}
   #msg .epi{opacity:.8;font-style:italic;font-size:16px;margin-top:10px}
+  .epi .src{display:block;font-style:normal;font-size:.72em;opacity:.6;margin-top:3px;letter-spacing:1px}
+  #furn{position:fixed;left:0;right:0;bottom:16px;text-align:center;pointer-events:none;color:#fff;
+    font-size:11px;letter-spacing:2px;font-style:italic;opacity:0;transition:opacity 2.5s;z-index:11}
   #msg .rankline{color:#ffd23f;-webkit-text-fill-color:#ffd23f;opacity:.95;font-weight:700;min-height:0}
   #more{display:flex;flex-direction:column;align-items:center}
   #msg .rankline:empty{display:none}
@@ -154,8 +157,9 @@
 <div id="combo"></div>
 <div id="milestone"></div>
 <div id="chest"></div>
+<div id="furn">musique d’ameublement · please do not listen</div>
 <div id="msg">
-  <h1>PALINDROME</h1>
+  <h1>SATIE</h1>
   <p class="tag">early taps bounce back · late taps carry on · dead-centre <b style="color:#ffd23f">SPLITS</b></p>
   <p class="cta" id="mtip">TAP TO PLAY</p>
   <div id="meta"></div>
@@ -219,9 +223,11 @@ const SKINS=[
   {name:'Violet',   dot:'#f0d7ff',arc:'#b46bff',unlock:750},
   {name:'Solar',    dot:'#fff4c2',arc:'#ffd23f',unlock:1200},
   {name:'Ascendant',dot:'#c8fff4',arc:'#00ffd0',unlock:0,asc:1},
-  {name:'Phantom',  dot:'#10131f',arc:'#f5f7ff',unlock:0,secret:true}, // hidden: 3 lifetime perfects while split
+  {name:'Phantom',  dot:'#10131f',arc:'#f5f7ff',unlock:0,secret:'pulsePhantom'}, // hidden: 3 lifetime perfects while split
   {name:'Rose',     dot:'#ffe3ec',arc:'#ff5c9a',unlock:2000},            // new skins go on the end: a saved choice is an index
   {name:'Mirror',   dot:'#ffffff',arc:'#dfe6ff',unlock:3003},
+  {name:'Velvet',   dot:'#efe2d2',arc:'#a88e7c',unlock:0,secret:'pulseVelvet'},  // hidden: seven perfects in a row (Satie's seven identical velvet suits)
+  {name:'Ivory',    dot:'#ffffff',arc:'#f3e6c4',unlock:0,secret:'pulseGymno'},   // hidden: the whole piece, all 116 notes, without a slip
 ];
 // the ladder is spaced by how far players really get: a first run lands near 150, an expert near 2000
 function tierFor(s){ return s>=3003?'PALINDROME':s>=2000?'LEGEND':s>=1200?'SNIPER':s>=750?'MARKSMAN':s>=400?'SHARPSHOOTER':s>=150?'ROOKIE':'NOVICE'; }
@@ -242,6 +248,8 @@ let statZenBest=+(localStorage.pulseZenBest||0);
 let statCrowns=+(localStorage.pulseCrowns||0);
 let revPerfects=+(localStorage.pulseRevPerfects||0); // now counts perfects landed while split
 let questsDone=+(localStorage.pulseQuests||0);
+let statUmb=+(localStorage.pulseUmbrellas||0), statRuns=+(localStorage.pulseRuns||0);
+const BDAY=(d=>d.getMonth()===4&&d.getDate()===17)(new Date());   // 17 May: Satie's birthday
 let lastRunScore=+(localStorage.pulseLast||0);
 let skinIdx=Math.min(SKINS.length-1,+(localStorage.pulseSkin||0));
 // skins earned under the old, lower thresholds are kept: they are recorded once, the first time this version loads
@@ -249,7 +257,7 @@ let owned=null; try{ owned=JSON.parse(localStorage.pulseOwned||'null'); }catch(e
 if(!Array.isArray(owned)){ owned=[1,2,3,4].filter(i=>best>=[0,25,60,120,250][i]);
   try{ localStorage.pulseOwned=JSON.stringify(owned); }catch(e){} }
 function unlocked(i){ const sk=SKINS[i];
-  if(sk.secret) return localStorage.pulsePhantom==='1';
+  if(sk.secret) return localStorage[sk.secret]==='1';
   return sk.asc ? ascRank(lifetime)>=sk.asc : (owned.includes(i) || best>=sk.unlock); }
 if(!unlocked(skinIdx)) skinIdx=0;
 function skin(){ return SKINS[skinIdx]; }
@@ -401,6 +409,8 @@ function updGchip(now){
   gc.style.color=diff>=0?'#7CFC9E':'#ff8da1';
 }
 refreshMeta(); renderSkinRow();
+if(BDAY){ const t=document.querySelector('#msg .tag');
+  if(t) t.insertAdjacentHTML('afterend','<p class="tag" style="color:#ffd23f;opacity:.9">🎂 17 MAY · BON ANNIVERSAIRE, ERIK</p>'); }
 setTimeout(()=>{ wireModeButtons(); refreshDailyBtn(); initCaps(); },0);
 
 // ---- state ----
@@ -425,8 +435,9 @@ let quest=null,qrng=Math.random,runQuests=0,revenged=false;
 let blinkT=0,blinkNext=7,blinkOn=0,deathInfo=null,shrinkHits=0;
 let lastActor=0,splitRun=0,runSplitBest=0,zen=0;
 let judgedIdx=0,lastRev=false,runZenBest=0,zenRecordShown=false,splitRecordShown=false;
-let led={hit:0,perf:0,rvs:0,satie:0,chest:0,quest:0,zen:0,ecl:0,rev:0};   // the score ledger — every point has a story
+let led={hit:0,perf:0,rvs:0,satie:0,gym:0,umb:0,chest:0,quest:0,zen:0,ecl:0,rev:0};   // the score ledger — every point has a story
 let runRevs=0,sinceSpawn=0,ringHitAt=0,evHits=-1,satieDone=false;
+let tuneClean=0,lent=true,satieLabel='♪ SATIE!',dryHits=0,runUmb=0,epiSrc='',furnT=0,furnOn=false,furnNext=0,furnBar=0;
 let tallyDone=true,tallyEndT=0,tallySkip=null,tightSpawn=false;
 let rivalTarget=0,crowned=false,ringClosed=false;
 // shared leaderboard + ghost racing (capability-optional: everything degrades to solo offline play)
@@ -456,14 +467,14 @@ const TUNE=(()=>{
 })();
 let tuneIdx=0,hbAlt=false;
 function playNote(o){
-  const n=TUNE[tuneIdx]; tuneIdx=(tuneIdx+1)%TUNE.length;
+  const n=TUNE[tuneIdx]; tuneIdx=(tuneIdx+1)%TUNE.length; tuneClean++;
   const dur=Math.min(1.5,0.32+n.beats*0.12);
   n.f.forEach((f,i)=>beep(f,dur,'triangle',i?0.08:0.22));   // the closing chords sound in full
   if(o.split) beep(n.f[0]/2,dur,'sine',0.08);               // two dots: the line doubled an octave below
   if(o.perfect) beep(n.f[0]*2,dur*0.8,'sine',0.06,0.03);
   if(o.gold) beep(n.f[0]*3,0.1,'sine',0.045,0.02);
 }
-function tuneSlip(){ tuneIdx=TUNE[tuneIdx].ph; }
+function tuneSlip(){ tuneIdx=TUNE[tuneIdx].ph; tuneClean=0; if(tuneIdx===0) lent=true; }
 const TICKB=[0.28,0.20,0.13,0.07], TICKF=[440,587.33,880,1174.66];   // A and D only: they sit under every bar of the tune
 
 function rand(a,b){ return a+Math.random()*(b-a); }
@@ -591,7 +602,8 @@ function start(){
   revenged=false; blinkT=0; blinkOn=0; deathInfo=null; runQuests=0; shrinkHits=0;
   lastActor=0; splitRun=0; runSplitBest=0; zen=0; vtrail=[];
   judgedIdx=0; lastRev=false; runZenBest=0; zenRecordShown=false; splitRecordShown=false; updZen();
-  led={hit:0,perf:0,rvs:0,satie:0,chest:0,quest:0,zen:0,ecl:0,rev:0}; satieDone=false;
+  led={hit:0,perf:0,rvs:0,satie:0,gym:0,umb:0,chest:0,quest:0,zen:0,ecl:0,rev:0}; satieDone=false;
+  tuneClean=0; lent=true; satieLabel='♪ SATIE!'; dryHits=0; runUmb=0;
   tallyDone=true; tallySkip=null; tightSpawn=false; crowned=false;
   runT0=performance.now(); runTrace=[]; runScores=[]; traceAcc=0; gchipAcc=0;
   ghost=null; gPtr=0; gsPtr=0; { const gc=$('gchip'); if(gc){ gc.textContent=''; gc.style.color=''; } }
@@ -620,7 +632,8 @@ function bumpStreak(){
 
 function burst(x,y,color,n){ if(TINY) n=Math.ceil(n/2);
   for(let i=0;i<n;i++){ const a=rand(0,Math.PI*2),sp=rand(1.5,7);
-    particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,color,r:rand(2,5)}); } }
+    particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,r:rand(2,5),
+      color:BDAY?PHASE_COLS[Math.floor(Math.random()*PHASE_COLS.length)]:color}); } }   // on his birthday, everything is confetti
 function ringBurst(color){ const n=TINY?20:40;
   for(let i=0;i<n;i++){ const a=i/n*Math.PI*2, sp=rand(2,6);
     particles.push({x:CX+Math.cos(a)*R,y:CY+Math.sin(a)*R,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1.2,color,r:rand(2,4)}); } }
@@ -646,8 +659,10 @@ function checkMilestone(){ MILESTONES.forEach(m=>{
     burst(CX,CY, skin().arc, 30); flash=0.4; flashColor='90,200,255';
     chime(1046,1318); } }); }
 
+const DATES={1866:'✦ 1866 · ERIK SATIE IS BORN ✦',1888:'✦ 1888 · THE GYMNOPÉDIES ✦',1925:'✦ 1925 · ADIEU, MONSIEUR ✦'};
 function checkPalindrome(){
   if(score<100 || palindromesSeen.has(score)) return;
+  if(DATES[score]){ palindromesSeen.add(score); popText($('chest'),DATES[score],1.25,2); chime(587.33,880); return; }
   const s=String(score);
   const pal = s===[...s].reverse().join(''), rep = /^(\d)\1+$/.test(s);
   if(rep||score===404||(pal&&s.length>=4)){ palindromesSeen.add(score);    // rare on purpose: repdigits, 404, four-digit mirrors
@@ -699,7 +714,7 @@ function missedPass(){
 // a life lost: the combo halves, the melody goes back to the start of its phrase, and the ring is let out again
 function spendLife(){
   spare--; updLives(true); combo=Math.floor(combo/2); updMult(); perfectStreak=0; zen=0; updZen(); tuneSlip();
-  missPasses=0; ringK=1;
+  missPasses=0; ringK=1; dryHits=0;
   if(quest&&quest.type==='clean'){ quest.start=hits; quest.got=0; updQuestHUD(); }
 }
 
@@ -757,21 +772,28 @@ function tap(){
     const plain=gain;
     if(didReverse){ gain=Math.ceil(gain*1.3); runRevs++; led.rvs+=gain-plain; }   // reverse pay, rounded UP so it is real at every combo
     score+=gain;
+    if(tuneIdx<8 && frac>=0.25) lent=false;               // the opening is only "lent" if every note of it is near the centre
     playNote({split:dots.length>1&&!didSplit,perfect:perfect,gold:gold});
     led[perfect?'perf':'hit']+=plain;
     // SATIE! — the tune's first eight notes, played straight through (a slip starts the phrase again). Once a run;
     // 88 points, one for each key of the piano.
-    if(!satieDone && tuneIdx===8){ satieDone=true; score+=88; led.satie+=88;
-      popText($('milestone'),'SATIE!',1.6,3); popText($('chest'),'♪ +88',1.3);
+    if(!satieDone && tuneIdx===8){ satieDone=true;
+      const slow=lent, pay=slow?176:88;                   // all eight near dead centre: the score's own marking, and double
+      score+=pay; led.satie+=pay; satieLabel=slow?'♪ LENT ET DOULOUREUX':'♪ SATIE!';
+      popText($('milestone'),slow?'LENT ET DOULOUREUX':'SATIE!',slow?1.35:1.6,3); popText($('chest'),'♪ +'+pay,1.3);
       burst(px,py,'#ffd23f',30); shockwave(px,py,'#ffd23f'); flash=0.4; flashColor='255,210,63'; buzz([15,30,15,30]);
-      [146.83,220,277.18,369.99].forEach((f,i)=>beep(f,1.1,'sine',0.07,0.08+i*0.07)); }   // a D major seventh, rolled upward under the eighth note
-    if(wasEclipse){ const bounty=25+combo; score+=bounty; led.ecl+=bounty;
-      popText($('chest'),'☀ +'+(gain+bounty),1.4);
-      flash=0.9; flashColor='255,255,240'; chime(523,659); beep(784,0.3,'sine',0.2); }
-    if(wasComet){ runComets++;
-      popText($('chest'),'☄ ×10 · +'+gain,1.4);
-      burst(px,py,'#ffd23f',40); flash=0.6; flashColor='140,220,255';
-      chime(523,784); beep(1046,0.25,'sine',0.2); }
+      [146.83,220,277.18,369.99].forEach((f,i)=>beep(f,slow?1.8:1.1,'sine',0.07,0.08+i*(slow?0.14:0.07))); }   // a D major seventh, rolled upward under the eighth note
+    // GYMNOPÉDISTE — the whole piece, all 116 notes, without a single slip
+    if(tuneClean>0 && tuneClean%TUNE.length===0){
+      score+=888; led.gym+=888;
+      const first=localStorage.pulseGymno!=='1'; if(first){ try{ localStorage.pulseGymno='1'; }catch(e){} renderSkinRow(); }
+      popText($('milestone'),'GYMNOPÉDISTE',1.6,5); popText($('chest'),first?'♪ +888 · IVORY UNLOCKED':'♪ +888',1.3,3);
+      ringBurst('#f3e6c4'); shockwave(px,py,'#f3e6c4'); shockwave(px,py,'#ffd23f');
+      slowmoT=0.5; slowmoS=0.15; flash=0.7; flashColor='255,244,214'; buzz([20,40,20,40,60]);
+      [73.42,146.83,220,293.66,349.23].forEach((f,i)=>beep(f,3.2,'sine',0.07,0.1+i*0.09)); }   // the last chord, D minor, held
+    // an umbrella for every hundred hits without losing a heart (he left a great many of them behind)
+    if(++dryHits>=100){ dryHits=0; runUmb++; statUmb++; try{ localStorage.pulseUmbrellas=statUmb; }catch(e){}
+      score+=100; led.umb+=100; popText($('chest'),'☂ UMBRELLA · +100',1.3,2); chime(784,988); }
     $('score').textContent=score;
     if(!dailyMode && !revenged && lastRunScore>=10 && score>lastRunScore && best!==lastRunScore){   // not on the daily: no one starts ahead
       revenged=true; score+=10; led.rev+=10; $('score').textContent=score; }   // quiet: it shows in the tally
@@ -821,6 +843,9 @@ function tap(){
     }
     if(perfect){
       perfectStreak++; runPerfects++; buzz([12,30,12]);
+      if(perfectStreak===7 && localStorage.pulseVelvet!=='1'){      // seven, like his seven identical velvet suits
+        try{ localStorage.pulseVelvet='1'; }catch(e){} renderSkinRow();
+        popText($('milestone'),'VELVET GENTLEMAN',1.4,4); chime(784,1175); }
       if(dots.length===2 && !didSplit){                   // the hidden road to Phantom
         revPerfects++; localStorage.pulseRevPerfects=revPerfects;
         if(revPerfects===10||revPerfects===25||revPerfects===50){
@@ -863,7 +888,7 @@ function tap(){
   } else if(dots.length>1 && d<=targetHalf*1.4){
     loseDot(ji,px,py);                        // near-miss while split: the wager takes a dot
   } else if(dots.length>1 && spare>0){
-    spare--; updLives(true); loseDot(ji,px,py);   // wild tap while split: a life AND a dot, but the run lives
+    spare--; dryHits=0; updLives(true); loseDot(ji,px,py);   // wild tap while split: a life AND a dot, but the run lives
   } else if(dots.length===1 && spare>0){
     spendLife();                              // a miss, near or wild, costs a life; only the last one ends the run
     burst(px,py,'#ff4d6d',10); shake=6; ringPulse=1; flash=0.22; flashColor='255,77,109';
@@ -885,7 +910,27 @@ function die(px,py){ state=S.dying; dyingT=0; shake=18; flash=0.7; flashColor='2
       PHASE_COLS[Math.floor(Math.random()*PHASE_COLS.length)], 16); }
   burst(px||CX,py||CY,'#ff4d6d',34); beep(160,0.35,'sawtooth',0.3); buzz([40,60,40]); }
 
+// Performance directions Satie wrote on his Gnossiennes (as printed in the Mutopia Project engravings), given back
+// to the player in English with the original beneath
+const MARKINGS=[
+  ['From the tip of the thought.','Gnossienne No. 1 · “Du bout de la pensée”'],
+  ['Wonder about yourself.','Gnossienne No. 1 · “Postulez en vous-même”'],
+  ['Step by step.','Gnossienne No. 1 · “Pas à pas”'],
+  ['On the tip of the tongue.','Gnossienne No. 1 · “Sur la langue”'],
+  ['With astonishment.','Gnossienne No. 2 · “Avec étonnement”'],
+  ['Do not leave.','Gnossienne No. 2 · “Ne sortez pas”'],
+  ['With great kindness.','Gnossienne No. 2 · “Dans une grande bonté”'],
+  ['Without pride.','Gnossienne No. 2 · “Sans orgueil”'],
+  ['Counsel yourself carefully.','Gnossienne No. 3 · “Conseillez-vous soigneusement”'],
+  ['Arm yourself with clairvoyance.','Gnossienne No. 3 · “Munissez-vous de clairvoyance”'],
+  ['Alone, for a moment.','Gnossienne No. 3 · “Seul, pendant un instant”'],
+  ['Very lost.','Gnossienne No. 3 · “Très perdu”'],
+  ['Carry this further.','Gnossienne No. 3 · “Portez cela plus loin”'],
+  ['Open your head.','Gnossienne No. 3 · “Ouvrez la tête”'],
+  ['Bury the sound.','Gnossienne No. 3 · “Enfouissez le son”']
+];
 function epitaph(isBest){
+  epiSrc='';
   const di=deathInfo||{};
   if(isBest&&score>0) return 'A new era begins.';
   if(di.ring) return 'The ring closed in.';
@@ -894,6 +939,7 @@ function epitaph(isBest){
   if(best>0&&score<best&&best-score<=2) return 'One tap short. Ouch.';
   if(di.gold) return 'Greed is a hell of a drug.';
   if((di.hits||0)<5) return 'Warming up. Surely.';
+  if(Math.random()<0.65){ const mk=MARKINGS[Math.floor(Math.random()*MARKINGS.length)]; epiSrc=mk[1]; return mk[0]; }
   const pool=['The ring remembers.','Rhythm is a harsh mistress.','The dot waits for no one.','It reads the same backwards.'];
   return pool[Math.floor(Math.random()*pool.length)];
 }
@@ -914,7 +960,7 @@ function makeShareCard(){
   if(deathInfo&&deathInfo.ang!=null){ g.fillStyle='#ff4d6d'; g.shadowColor='#ff4d6d'; g.shadowBlur=12;
     g.beginPath(); g.arc(300+Math.cos(deathInfo.ang)*95,150+Math.sin(deathInfo.ang)*95,6,0,7); g.fill(); g.shadowBlur=0; } // where I died
   g.textAlign='center'; g.fillStyle='#fff';
-  g.font='900 30px Segoe UI,sans-serif'; g.fillText('PALINDROME',300,54);
+  g.font='900 30px Segoe UI,sans-serif'; g.fillText('SATIE',300,54);
   g.font='900 90px Segoe UI,sans-serif'; g.fillStyle=sk.arc; g.fillText(score,300,185);
   g.font='600 20px Segoe UI,sans-serif'; g.fillStyle='#fff';
   g.fillText(tierFor(score)+'  ·  combo ×'+(1+Math.floor(comboPeak/5)*0.5).toFixed(1)+(runSplits?'  ·  ⧉ '+runSplits:''),300,232);
@@ -938,10 +984,10 @@ function shareCard(btn){
     (async()=>{
       try{
         const dl = (window.claude&&window.claude.use) ? await window.claude.use('downloads') : null;
-        if(dl){ await dl.save({filename:'palindrome-'+score+'.png', data:blob}); btn.textContent='CARD SAVED ✓'; return; }
+        if(dl){ await dl.save({filename:'satie-'+score+'.png', data:blob}); btn.textContent='CARD SAVED ✓'; return; }
       }catch(e){ if(e&&e.code==='declined'){ return; } }
       const a=document.createElement('a');
-      a.href=URL.createObjectURL(blob); a.download='palindrome-'+score+'.png'; a.click(); btn.textContent='CARD SAVED ✓';
+      a.href=URL.createObjectURL(blob); a.download='satie-'+score+'.png'; a.click(); btn.textContent='CARD SAVED ✓';
     })();
   }
 }
@@ -994,6 +1040,7 @@ function finalizeDeath(){
   localStorage.pulseLifetime=lifetime;
   const ascNow=ascRank(lifetime);
   statChests+=runChests; statPerfects+=runPerfects; statComets+=runComets; statSplits+=runSplits;
+  statRuns++; try{ localStorage.pulseRuns=statRuns; }catch(e){}
   localStorage.pulseChests=statChests; localStorage.pulsePerfects=statPerfects;
   localStorage.pulseComets=statComets; localStorage.pulseSplits=statSplits;
   if(runSplitBest>statSplitBest){ statSplitBest=runSplitBest; localStorage.pulseSplitBest=statSplitBest; }
@@ -1036,24 +1083,25 @@ function finalizeDeath(){
   const m=$('msg'); m.classList.remove('hidden');
   // one breath: the score, what the game has to say about it, and a way back in. Everything else waits behind MORE.
   m.innerHTML=
-    `<div class="wordmark">PALINDROME</div>`+
+    `<div class="wordmark">SATIE</div>`+
     `<h1 class="go-head">${head}</h1>`+
     `<p class="big go-score" id="gscore">${score}</p>`+
     `<div id="tally"></div>`+
-    `<p class="epi">“${epitaph(isBest)}”</p>`+
+    `<p class="epi">“${epitaph(isBest)}”${epiSrc?`<span class="src">— Satie, ${epiSrc}</span>`:''}</p>`+
     `<p style="opacity:.55">${sub}${dailyLine}</p>`+
     `<p class="rankline" id="rankline"></p>`+
     ghostLine+
     (rivalTarget?`<p style="${score>rivalTarget?goldCss:'color:#8cdcff;-webkit-text-fill-color:#8cdcff'};opacity:.85">${score>rivalTarget?'👑 CROWN TAKEN · ':'⚔ crown missed · '}${score} v ${rivalTarget}</p>`:'')+
     (recordBroken?`<p style="${goldCss};opacity:.85">⚡ held the record zone for ${recordHits} hits</p>`:'')+
     (runComets?`<p style="color:#8cdcff;-webkit-text-fill-color:#8cdcff;opacity:.85">☄ caught a comet</p>`:'')+
+    (statRuns===840?`<p style="${goldCss}">✦ VEXATIONS · run 840. Satie asked for 840 repetitions. You may stop now.</p>`:'')+
     (justUnlocked.length?`<p style="${goldCss}">✦ SKIN UNLOCKED: ${justUnlocked.join(', ')}</p>`:'')+
     (ascNow>ascBefore?`<p style="${goldCss}">✦ ASCENSION ${ascNow} REACHED${ascPerkHint(ascNow)}</p>`:'')+
     `<div class="row" data-ui>`+(record?shareBtnHtml:'')+
       `<button data-ui id="againBtn">PLAY AGAIN ▸</button><button data-ui id="moreBtn">MORE</button></div>`+
     `<div id="more" class="hidden">`+
       `<p style="opacity:.6">${tierFor(score)} &nbsp;·&nbsp; combo peaked ×${mult}${runSplits?' &nbsp;·&nbsp; ⧉ split ×'+runSplits+(runSplitBest?' (ran '+runSplitBest+' hits)':''):''}${runZenBest>=3?' &nbsp;·&nbsp; ☯ zen ×'+runZenBest:''}</p>`+
-      `<p style="opacity:.5;font-size:.9em">🔥 Day ${streak} &nbsp;·&nbsp; Lifetime ${lifetime} &nbsp;·&nbsp; 📦 ${statChests} &nbsp;·&nbsp; 🎯 ${statPerfects} &nbsp;·&nbsp; ◆ ${questsDone} &nbsp;·&nbsp; ⧉ ${statSplits}${statComets?' &nbsp;·&nbsp; ☄ '+statComets:''}</p>`+
+      `<p style="opacity:.5;font-size:.9em">🔥 Day ${streak} &nbsp;·&nbsp; Lifetime ${lifetime} &nbsp;·&nbsp; 📦 ${statChests} &nbsp;·&nbsp; 🎯 ${statPerfects} &nbsp;·&nbsp; ◆ ${questsDone} &nbsp;·&nbsp; ⧉ ${statSplits}${statComets?' &nbsp;·&nbsp; ☄ '+statComets:''}${statUmb?' &nbsp;·&nbsp; ☂ '+statUmb:''}</p>`+
       `<div id="board"></div>`+
       `<div class="row" data-ui>`+(record?'':shareBtnHtml)+`<button data-ui id="copyBtn">COPY TEXT</button></div>`+
       `<div class="row" data-ui><button data-ui id="dailyBtn">DAILY</button><button data-ui id="vsBtn">⚔ VS</button><button data-ui id="ghostBtn">👻</button></div>`+
@@ -1067,17 +1115,19 @@ function finalizeDeath(){
   $('copyBtn').onclick=e=>{ e.stopPropagation();
     const sup = runSplitBest>=5?('⧉ survived '+runSplitBest+' split'):(runZenBest>=4?('☯ zen ×'+runZenBest):('combo ×'+mult));
     const txt = crowned
-      ? `PALINDROME 👑 Took your crown on DAILY ${utcDay()} — ${score} v ${rivalTarget}. Reclaim it?${statCrowns>1?' (crowns ×'+statCrowns+')':''}`
+      ? `SATIE 👑 Took your crown on DAILY ${utcDay()} — ${score} v ${rivalTarget}. Reclaim it?${statCrowns>1?' (crowns ×'+statCrowns+')':''}`
       : (dailyMode
-        ? `PALINDROME DAILY ${utcDay()} — ${score} pts · ${tierFor(score)}. Same course for everyone, zero excuses. Beat me.`
-        : `PALINDROME · ${score} — ${tierFor(score)} · ${sup} 🎯 can you beat it?`);
+        ? `SATIE DAILY ${utcDay()} — ${score} pts · ${tierFor(score)}. Same course for everyone, zero excuses. Beat me.`
+        : `SATIE · ${score} — ${tierFor(score)} · ${sup} 🎯 can you beat it?`);
     try{ navigator.clipboard.writeText(txt); $('copyBtn').textContent='COPIED ✓'; }catch(_){ $('copyBtn').textContent=txt; } };
   // the tally plays as the run adds itself up; it never blocks the way back in
   const items=[];
   if(led.hit) items.push(['TAPS ×'+(hits-runPerfects),led.hit]);
   if(led.perf) items.push(['PERFECTS ×'+runPerfects,led.perf]);
   if(led.rvs) items.push(['↩ REVERSES ×'+runRevs,led.rvs]);
-  if(led.satie) items.push(['♪ SATIE!',led.satie]);
+  if(led.satie) items.push([satieLabel,led.satie]);
+  if(led.gym) items.push(['♪ GYMNOPÉDISTE',led.gym]);
+  if(led.umb) items.push(['☂ UMBRELLAS ×'+runUmb,led.umb]);
   if(led.chest) items.push(['📦 CHESTS',led.chest]);
   if(led.quest) items.push(['◆ QUESTS',led.quest]);
   if(led.zen) items.push(['☯ ZEN',led.zen]);
@@ -1152,7 +1202,17 @@ function frame(now){
       let v; do{ v=Math.floor(Math.random()*3); }while(v===idleLast);
       idleAnim=v; idleLast=v; idleAnimT=0; }
     if(idleAnim>=0){ idleAnimT+=rdt; if(idleAnimT>0.9) idleAnim=-1; }
-  } else { idleT=0; idleAnim=-1; }
+    // Furniture music: left alone for a minute, the game plays the left hand to itself, quietly. Satie's
+    // "musique d'ameublement" was written to be ignored. (Only once sound has been switched on by a tap.)
+    furnT+=rdt;
+    if(furnT>60 && AC && AC.state==='running'){
+      if(!furnOn){ furnOn=true; furnNext=0; furnBar=0; const f=$('furn'); if(f) f.style.opacity=.4; }
+      furnNext-=rdt;
+      if(furnNext<=0){ furnNext=2.7; const g=furnBar%2===0; furnBar++;
+        beep(g?196:146.83,2.5,'sine',0.05);                                     // G, then D, in the bass
+        (g?[246.94,293.66,369.99]:[220,277.18,369.99]).forEach(f=>beep(f,1.7,'sine',0.022,0.9)); }   // the chord on the second beat
+    }
+  } else { idleT=0; idleAnim=-1; furnStop(); }
 
   trail.forEach(t=>{ t.a-=rdt*1.4; }); trail=trail.filter(t=>t.a>0);
   vtrail.forEach(t=>{ t.a-=rdt*2.4; }); vtrail=vtrail.filter(t=>t.a>0);
@@ -1296,9 +1356,10 @@ function hexToRgb(h){ const n=parseInt(h.slice(1),16); return (n>>16&255)+','+(n
 requestAnimationFrame(frame);
 
 // ---- input ----
-function onDown(e){ if(e.target.closest&&e.target.closest('[data-ui]')) return;
+function furnStop(){ furnT=0; if(furnOn){ furnOn=false; const f=$('furn'); if(f) f.style.opacity=0; } }
+function onDown(e){ furnStop(); if(e.target.closest&&e.target.closest('[data-ui]')) return;
   e.preventDefault(); if(AC&&AC.state==='suspended')AC.resume(); tap(); }
 window.addEventListener('mousedown',onDown);
 window.addEventListener('touchstart',onDown,{passive:false});
-window.addEventListener('keydown',e=>{ if(e.code==='Space'||e.code==='Enter'){ e.preventDefault(); if(AC&&AC.state==='suspended')AC.resume(); tap(); }});
+window.addEventListener('keydown',e=>{ furnStop(); if(e.code==='Space'||e.code==='Enter'){ e.preventDefault(); if(AC&&AC.state==='suspended')AC.resume(); tap(); }});
 </script>
