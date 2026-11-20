@@ -14,16 +14,16 @@ dependencies, no server — open `index.html` in any browser and play.
   - Tap **after the midpoint** → the dot **carries on**.
   - Tap **dead centre** → the dot **⧉ SPLITS** into two dots orbiting in
     opposite directions. Split play runs faster on tighter arcs and pays ×1.5.
-    A near-miss costs a dot; a wild tap costs a dot and a shield, and only
-    ends the run when you have no shields left.
+    A near-miss costs a dot; a wild tap costs a dot and a life.
 - **Exit speed is proportional to your distance from the midpoint**: centre
   taps leave calm and slow, edge taps leave hot and fast. Precision is the
   brake; sloppiness is the accelerator.
-- With one dot, a near-miss spends a **shield** 🛡 (regenerate every 25 hits);
-  a wild miss ends the run.
+- **Lives are hearts** ❤️. You start with three. With one dot, any miss, near
+  or wild, costs a heart; the run ends when the last one goes. A heart grows
+  back every 25 hits (four at most), and chests can hold one.
 - **Your first runs are gentler**: until your best reaches 25, the first ten
-  hits of a run cannot split the dot and a wild tap there costs a shield
-  instead of the run.
+  hits of a run cannot split the dot, and your first run of the day is an
+  ordinary one rather than the daily.
 - **The run plays Satie.** Each hit sounds the next note of Erik Satie's
   *Gymnopédie No. 1* (1888, public domain; pitches transcribed from the
   Mutopia Project engraving), so playing well plays the tune: all 116 notes,
@@ -37,19 +37,23 @@ dependencies, no server — open `index.html` in any browser and play.
 - Rising ticks telegraph each strike; the dot grows and brightens as it closes in.
 - **The ring closes in.** Every lap that lets the arc go by untapped pulls
   the ring in a notch and turns it redder. Timing is unchanged (everything
-  is measured in angles), but there is less to read. At its tightest, one
-  more wasted lap costs a shield, or the run if you have none. Any hit
-  springs it back to full size. It only starts once a run's first hit lands,
-  and it tightens less on watch-sized screens.
+  is measured in angles), but there is less to read. It stays closed in
+  until you hit the arc or lose a life; at its tightest, one more wasted
+  lap takes that life itself. Either way it then springs back to full size.
+  It is billed fairly: a late tap is a miss, never a miss *and* a wasted
+  lap; an arc that appears on top of the dot is a free pass; with two dots
+  only the one you are judged on counts. It starts once a run's first hit
+  lands, waits out an eclipse, and tightens less on watch-sized screens.
 
 ## Scoring
 
 | Mechanic | Effect |
 |---|---|
-| Combo (every 5 hits) | +0.5× multiplier |
+| Combo (every 5 hits) | +0.5× multiplier, shown live beside the score |
+| Reverse (tap before the midpoint) | ×1.3 on that hit |
 | Perfect / split (arc centre) | 2× — and freezes time for a beat |
 | Gold arc (14%) | 3× |
-| Mystery chest (every 8–15 hits) | +points, +shield, GOLD RUSH ×6, or a 5% JACKPOT (×2 for 10 hits) |
+| Mystery chest (every 8–15 hits) | +points, +1 life, GOLD RUSH ×6, or a 5% JACKPOT (×2 for 10 hits) |
 | Phase shift (every 50 hits) | Palette rotates — long runs travel somewhere |
 | OVERCLOCK (every ~35–45 hits) | ×1.6 speed, ×1.5 arc, ×2 pay for 3 targets |
 | ☄ COMET (rare, once per run) | The dot streaks for one lap — that hit pays ×10 |
@@ -57,13 +61,16 @@ dependencies, no server — open `index.html` in any browser and play.
 
 ## Progression
 
-- **Tiers** — NOVICE → ROOKIE → SHARPSHOOTER → MARKSMAN → SNIPER → LEGEND
-- **Skins** — unlocked at best-score 25 / 60 / 120 / 250
+- **Tiers** — NOVICE → ROOKIE (150) → SHARPSHOOTER (400) → MARKSMAN (750) →
+  SNIPER (1200) → LEGEND (2000) → PALINDROME (3003). The rungs are spaced by
+  how far players really get: a first run lands near 150, an expert near 2000.
+- **Skins** — unlocked at best-score 150 / 400 / 750 / 1200 / 2000 / 3003.
+  Skins earned under the earlier, lower thresholds are kept.
 - **Daily run** — a date-seeded deterministic layout with its own best; pays 2× lifetime
 - **Streak** — consecutive days played (runs of 10+ points count)
 - **Ascension** — lifetime score unlocks ranks at 500 / 1000 / 2000 / 4000 / 8000 / 16000
-  with real perks: rank 1 = exclusive *Ascendant* skin, rank 2 = start with 3 shields,
-  rank 3 = dot trail
+  with real perks: rank 1 = exclusive *Ascendant* skin, rank 2 = one more starting
+  life (not on the daily), rank 3 = dot trail
 - **Share** — a rendered PNG score card, copied to the clipboard
 
 Everything persists in `localStorage`.
@@ -73,7 +80,8 @@ Everything persists in `localStorage`.
 - **Quests** — a rotating micro-goal always on the HUD (hit 3 golds, reverse
   3 times, 15 hits without a graze…), each paying a bonus; daily runs share
   the same quest sequence for everyone.
-- **Revenge** — your last run's score is a rival; pass it for a "⚔ REVENGED" bonus.
+- **Revenge** — your last run's score is a rival; pass it for a +10 bonus
+  (not on the daily, where no one starts ahead).
 - **Epitaphs** — the death screen has opinions: "Greed is a hell of a drug.",
   "It reads the same backwards."
 - **Haptics** — hits, perfects, splits, and deaths vibrate where supported.
@@ -89,18 +97,24 @@ Everything persists in `localStorage`.
 
 ## Leaderboard & ghosts
 
-The first run of each day defaults to the **daily**, which is built to be a
-fair contest: it is keyed to the UTC day, every roll is derived from the
-seed and the hit number (so the course is the same for everyone whatever
-path they take through it), and perks and small-screen arc widening are off.
+Once your best reaches 25, the first run of each day defaults to the
+**daily**, which is built to be a fair contest: it is keyed to the UTC day,
+and gold arcs, comets, eclipses and overclocks are rolled from the seed and
+the hit number before anything else, so every player meets the same events
+at the same hit whatever path they take. Perks, the newcomer's grace, the
+revenge bonus and small-screen arc widening are all off. (What a chest
+gives can still depend on whether you have room for another life.)
 
 When hosted as a claude.ai artifact (with the `db` and `user` capabilities),
 daily runs post to a **shared leaderboard**: today's top five on the title
 screen and behind MORE on the death screen, your own rank if you're outside
 it, and a countdown to the reset. Rank is an event: the next player above
-you is a live target on the HUD, passing them mid-run is announced, the
-death screen shows your rank change, and the title screen tells you if you
-were passed while away. Each row keeps a seven-day history, so yesterday's
+you becomes a target on the HUD once the chase is close, passing someone
+on the way into the top five is announced, the death screen shows your
+rank change, and the title screen tells you if you slipped while away (and
+sets up a daily run to answer it). All of it counts the score you have
+already posted, so you are never told you passed someone you were already
+ahead of. Each row keeps a seven-day history, so yesterday's
 winner and your place are remembered. Rows store only an
 opaque id and a score — names are resolved per viewer at render time, never
 stored. A score is written only when it beats your own best for the day.
@@ -131,7 +145,7 @@ outside it can read the board but not write to it.
 ## The tally
 
 Every death ends in the run adding itself up: TAPS, PERFECTS, CHESTS,
-QUESTS, ZEN, ECLIPSE, REVENGE count up line by line (rising note per line)
+REVERSES, CHESTS, QUESTS, ZEN, ECLIPSE, REVENGE count up line by line (rising note per line)
 into the grand total, which slams in with a flash. The tally never blocks:
 after a short pause that swallows a frantic last tap, one tap plays again.
 The death screen itself is deliberately short — score, epitaph, play again —
@@ -148,11 +162,12 @@ the game degrades silently to visual-only feedback.)
 
 ## How it was designed
 
-Built across seven iterations by an agent-council design loop: three tester
+Built across sixteen iterations by an agent-council design loop: three tester
 agents (fun, challenge, reward) critique each build independently, an
 orchestrator synthesizes a ranked plan, the next build implements it, and
 every build is verified end-to-end in a real browser before committing.
-Council scores across rounds: Fun 6.5 → 8+, Challenge 4 → 7.5, Reward 4 → 7.5.
+Council scores across rounds: Fun 6.5 → 8.5, Challenge 4 → 7, Reward 4 → 8.5
+(the scale was reset at the v7 redesign).
 The v7 redesign (the palindrome rule: player-written direction, splits, and
 distance-proportional exit speed) replaced the old pre-announced forced
 reversals. Each round's plan is recorded in the commit history.
